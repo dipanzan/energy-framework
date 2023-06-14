@@ -24,6 +24,7 @@
                             <goal>copy</goal>
                         </goals>
                         <configuration>
+<!--                            <artifact>com.dipanzan:agent-deps:${project.version}</artifact>-->
                             <artifact>com.dipanzan:agent-deps:${project.version}</artifact>
                             <outputDirectory>${project.build.outputDirectory}</outputDirectory>
                             <stripVersion>true</stripVersion>
@@ -65,7 +66,8 @@
                                     </excludes>
                                 </filter>
                                 <filter>
-                                    <artifact>com.dipanzan:agent-deps</artifact>
+<!--                                    <artifact>com.dipanzan:agent-deps</artifact>-->
+                                    <artifact>com.dipanzan:agent-deps:${project.version}</artifact>
                                     <excludes>
                                         <exclude>**/*</exclude>
                                     </excludes>
