@@ -1,0 +1,50 @@
+MODULE_NAME := energy
+SHELL := /bin/bash
+KVER := $(shell uname -r)
+KDIR ?= /lib/modules/$(KVER)/build
+PWD := $(shell pwd)
+CFLAGS := -gw
+CC := x86_64-linux-gnu-gcc
+obj-m += $(MODULE_NAME).o
+
+PROC := ""
+PID := -1
+CPU := -1
+
+build:
+	$(MAKE) CC=$(CC) -C $(CLFAGS) $(KDIR) M=$(PWD)
+
+clean:
+	# clean root directory
+	rm -Rf ./.tmp_versions
+	rm -f ./*.o
+	rm -f ./.*.o.cmd
+	rm -f ./*.order
+	rm -f ./*.symvers
+	# clean source directory
+	rm -f ./*.ko
+	rm -f ./*.o
+	rm -f ./*.mod.c
+	rm -f ./.*.ko.cmd
+	rm -f ./*.mod.o
+	rm -f ./.*.o.cmd
+	rm -f ./*.mod
+
+install:
+	sudo insmod $(MODULE_NAME).ko target_process_name=$(PROC) target_process_pid=$(PID) target_process_cpu=$(CPU)
+
+remove:
+	sudo rmmod $(MODULE_NAME)
+
+clear:
+	sudo dmesg --clear
+
+dinit:
+	$(MAKE) remove
+	$(MAKE) clean
+
+init:
+	$(MAKE) build
+	$(MAKE) install
+
+.PHONY: clean install remove clear dinit init
