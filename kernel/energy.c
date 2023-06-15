@@ -224,7 +224,10 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 		u64 value, enabled, running;
 
 		mutex_lock(&data->lock);
+		perf_event_enable(event);
+		msleep(3000);
 		value = perf_event_read_value(event, &enabled, &running);
+		perf_event_disable(event);
 		*val = value;
 		mutex_unlock(&data->lock);
 
@@ -553,7 +556,7 @@ static inline int init_perf_backend(struct device *dev)
 	{
 		ret |= alloc_perf_event_attrs(dev);
 		ret |= alloc_perf_event_kernel_counters(dev);
-		ret |= enable_perf_events(dev);
+		// ret |= enable_perf_events(dev);
 	}
 	return ret;
 }

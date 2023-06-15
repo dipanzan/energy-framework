@@ -7,10 +7,13 @@ public class DemoApp {
     public static void main(String[] args) throws Exception {
         System.out.println("Application Start");
 
-        DemoApp app = new DemoApp();
-        for (int i = 0; i < 100; i++) {
-            app.sleeping(10);
-        }
+//        DemoApp app = new DemoApp();
+//        for (int i = 0; i < 100; i++) {
+//            app.sleeping(10);
+//        }
+
+        Matrix m = new Matrix();
+        m.run();
     }
 
     private void sleeping(long seconds) throws Exception {

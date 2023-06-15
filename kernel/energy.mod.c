@@ -47,11 +47,13 @@ __used __section("__versions") = {
 	{ 0xb6cb556a, "_find_first_and_bit" },
 	{ 0x87a21cb3, "__ubsan_handle_out_of_bounds" },
 	{ 0x45d246da, "node_to_cpumask_map" },
+	{ 0xabba89f, "perf_event_enable" },
+	{ 0xf9a482f9, "msleep" },
+	{ 0x94dbad2, "perf_event_disable" },
 	{ 0xb3f7646e, "kthread_should_stop" },
 	{ 0x7f02188f, "__msecs_to_jiffies" },
 	{ 0x54496b4, "schedule_timeout_interruptible" },
 	{ 0xf709cb89, "kthread_stop" },
-	{ 0x94dbad2, "perf_event_disable" },
 	{ 0x37dbdae4, "perf_event_release_kernel" },
 	{ 0x2800222e, "devm_kmalloc" },
 	{ 0xd7b002d, "boot_cpu_data" },
@@ -62,7 +64,6 @@ __used __section("__versions") = {
 	{ 0xac13d953, "kthread_create_on_node" },
 	{ 0xd9b11890, "wake_up_process" },
 	{ 0x8096f634, "perf_event_create_kernel_counter" },
-	{ 0xabba89f, "perf_event_enable" },
 	{ 0xe9925143, "__platform_driver_register" },
 	{ 0x88ed50ea, "platform_device_alloc" },
 	{ 0x66b467be, "platform_driver_unregister" },
@@ -83,4 +84,4 @@ MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0030:feature:*");
 MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0050:feature:*");
 MODULE_ALIAS("platform:kernel_energy_driver");
 
-MODULE_INFO(srcversion, "D3317E96239049B39888B54");
+MODULE_INFO(srcversion, "56A25330011399845856C95");
