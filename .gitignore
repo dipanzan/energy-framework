@@ -80,5 +80,6 @@ fabric.properties
 kernel/.*
 kernel/energy.*
 
-
+# IntelliJ specific .xml file
+.idea/*.xml
 
