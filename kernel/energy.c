@@ -1,5 +1,6 @@
 #include <asm/cpu_device_id.h>
 
+#include <linux/init.h>
 #include <linux/bits.h>
 #include <linux/cpu.h>
 #include <linux/cpumask.h>
@@ -10,6 +11,7 @@
 #include <linux/kthread.h>
 #include <linux/list.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/mutex.h>
 #include <linux/processor.h>
 #include <linux/platform_device.h>
@@ -47,14 +49,17 @@ MODULE_VERSION(DRIVER_MODULE_VERSION);
 static char *target_process_name = NULL;
 static int target_process_pid = -1;
 static int target_process_cpu = -1;
+static int mode = 0;
 
 module_param(target_process_name, charp, 0000);
 module_param(target_process_pid, int, 0000);
 module_param(target_process_cpu, int, 0000);
+module_param(mode, int, 0000);
 
 MODULE_PARM_DESC(target_process_name, "target_process_name is the process name to attach to.");
 MODULE_PARM_DESC(target_process_pid, "target_process_pid is the PID to to attach to.");
 MODULE_PARM_DESC(target_process_cpu, "target_process_cpu is the target CPU for energy measurement.");
+MODULE_PARM_DESC(mode, "[mode] is the backend mode for energy data source. [0]- MSR, [1]- perf");
 
 static void set_energy_unit(energy_t *data)
 {
@@ -119,8 +124,6 @@ static inline void increment_core_id(energy_t *data)
 
 static void read_accumulate(energy_t *data)
 {
-	pr_info("\n");
-
 	read_pkg_energy(data);
 	reset_core_id(data);
 	read_core_energy(data);
@@ -129,7 +132,6 @@ static void read_accumulate(energy_t *data)
 
 static void add_delta_core(energy_t *data, int channel, int cpu, long *val)
 {
-	printk(KERN_ALERT "%s() called\n", __FUNCTION__);
 	struct energy_accumulator *accum;
 
 	mutex_lock(&data->lock);
@@ -174,8 +176,6 @@ static inline void energy_consumed_ujoules(energy_t *data, u64 value, long *val)
 
 static void add_delta_pkg(energy_t *data, int channel, int cpu, long *val)
 {
-	printk(KERN_ALERT "%s() called\n", __FUNCTION__);
-
 	mutex_lock(&data->lock);
 	u64 value = read_msr_on_cpu(cpu, ENERGY_PKG_MSR);
 
@@ -203,7 +203,7 @@ static umode_t read_energy_visibility(const void *drv_data, enum hwmon_sensor_ty
 
 static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
-	printk(KERN_ALERT "%s() called\n", __FUNCTION__);
+	pr_alert("\n");
 	energy_t *data = dev_get_drvdata(dev);
 	int cpu;
 
@@ -265,7 +265,13 @@ static int read_energy_string(struct device *dev, enum hwmon_sensor_types type, 
 	return 0;
 }
 
-static const struct hwmon_ops energy_ops = {
+static const struct hwmon_ops energy_ops_msr = {
+	.is_visible = read_energy_visibility,
+	.read = read_energy_data,
+	.read_string = read_energy_string,
+};
+
+static const struct hwmon_ops energy_ops_perf = {
 	.is_visible = read_energy_visibility,
 	.read = read_perf_energy_data,
 	.read_string = read_energy_string,
@@ -462,7 +468,7 @@ static int custom_match_dev(struct device *dev, void *data)
 	   pointed by dev is the device you are searching for.
 	 */
 
-	printk(KERN_ALERT "init_name: %s\n", dev->init_name);
+	pr_info("init_name: %s\n", dev->init_name);
 	return 0;
 }
 
@@ -474,12 +480,12 @@ static struct device *find_device(void)
 		struct device *dev = device_find_child(parent, NULL, /* passed in the second param to custom_match_dev */ custom_match_dev);
 		if (dev)
 		{
-			printk(KERN_ALERT "DEVICE FOUND\n!");
+			pr_info("DEVICE FOUND\n!");
 			return dev;
 		}
 		put_device(dev);
 	}
-	printk(KERN_ALERT "DEVICE NOT FOUND\n!");
+	pr_info("DEVICE NOT FOUND\n!");
 	return NULL;
 }
 
@@ -510,7 +516,7 @@ static int enable_perf_events(struct device *dev)
 
 static int disable_perf_events(struct device *dev)
 {
-	pr_info("");
+	pr_info("\n");
 	energy_t *data = dev_get_drvdata(dev);
 	for (unsigned int cpu = 0; cpu < data->nr_cpus; cpu++)
 	{
@@ -539,6 +545,18 @@ static int release_perf_event_kernel_counters(struct device *dev)
 	return ret;
 }
 
+static inline int init_perf_backend(struct device *dev)
+{
+	int ret = 0;
+
+	if (mode == 1)
+	{
+		ret |= alloc_perf_event_attrs(dev);
+		ret |= alloc_perf_event_kernel_counters(dev);
+		ret |= enable_perf_events(dev);
+	}
+	return ret;
+}
 static int create_energy_sensor(struct device *dev)
 {
 	int ret = 0;
@@ -547,10 +565,8 @@ static int create_energy_sensor(struct device *dev)
 	ret |= alloc_sensor_accumulator(dev);
 	ret |= alloc_label_l(dev);
 
-	ret |= alloc_perf_event_attrs(dev);
-	ret |= alloc_perf_event_kernel_counters(dev);
-
-	ret |= enable_perf_events(dev);
+	// initialize perf backend if mode == 1
+	ret |= init_perf_backend(dev);
 
 	return ret;
 }
@@ -564,7 +580,17 @@ static const struct x86_cpu_id amd_ryzen_cpu_ids_with_64bit_rapl_counters[] = {
 
 static inline void set_hwmon_chip_info(energy_t *data)
 {
-	data->chip.ops = &energy_ops;
+
+	if (mode == 0)
+	{
+		pr_alert("[mode]: using default msr mode.\n");
+		data->chip.ops = &energy_ops_msr;
+	}
+	else
+	{
+		pr_alert("[mode] using perf kernel mode.\n");
+		data->chip.ops = &energy_ops_perf;
+	}
 	data->chip.info = data->info;
 
 	/* Populate per-core energy reporting */
@@ -650,6 +676,16 @@ static int energy_probe(struct platform_device *pd)
 	return PTR_ERR_OR_ZERO(energy_thread);
 }
 
+static inline int release_perf_backend(struct device *dev)
+{
+	int ret = 0;
+	if (mode == 1)
+	{
+		ret |= disable_perf_events(dev);
+		ret |= release_perf_event_kernel_counters(dev);
+	}
+	return ret;
+}
 static int energy_remove(struct platform_device *pd)
 {
 	int ret = 0;
@@ -657,12 +693,10 @@ static int energy_remove(struct platform_device *pd)
 	energy_t *data = dev_get_drvdata(dev);
 	if (data && data->wrap_accumulate)
 	{
-		kthread_stop(data->wrap_accumulate);
+		ret |= kthread_stop(data->wrap_accumulate);
 	}
 
-	ret |= disable_perf_events(dev);
-	ret |= release_perf_event_kernel_counters(dev);
-
+	ret |= release_perf_backend(dev);
 	return ret;
 }
 

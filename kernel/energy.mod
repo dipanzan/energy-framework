@@ -1,1 +1,1 @@
-/home/dipanzan/CProjects/modules/energy/energy.o
+/home/dipanzan/IdeaProjects/energy-framework/kernel/energy.o

@@ -9,6 +9,8 @@ KDIR ?= /lib/modules/`uname -r`/build
 
 MODULE_NAME=energy
 
+MODE:=0
+
 default:
 	export CONFIG_SENSOR_AMD_ENERGY=m;	\
 	$(MAKE) -C $(KDIR) M=$$PWD modules
@@ -22,7 +24,7 @@ clean:
 	$(MAKE) -C $(KDIR) M=$$PWD clean
 
 init:
-	sudo insmod $(MODULE_NAME).ko
+	sudo insmod $(MODULE_NAME).ko mode=$(MODE)
 
 dinit:
 	sudo rmmod $(MODULE_NAME).ko

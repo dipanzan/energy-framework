@@ -12,11 +12,5 @@
         <module name="agent-deps" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="agent" target="17" />
-      <module name="app" target="17" />
-      <module name="energy" target="17" />
-      <module name="injector" target="17" />
-    </bytecodeTargetLevel>
   </component>
 </project>
