@@ -85,7 +85,7 @@ typedef struct energy_data
         at the last position due to unknown array size
         size is nr_cpus.
      */
-    struct perf_event *events[];
+    struct perf_event *events[8];
 
 } energy_t;
 

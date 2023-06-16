@@ -29,31 +29,28 @@ MODULE_INFO(retpoline, "Y");
 
 static const struct modversion_info ____versions[]
 __used __section("__versions") = {
-	{ 0x5b8239ca, "__x86_return_thunk" },
 	{ 0xbdfb6dbb, "__fentry__" },
+	{ 0x5b8239ca, "__x86_return_thunk" },
 	{ 0x5a5a2271, "__cpu_online_mask" },
 	{ 0xaad72ea0, "perf_event_read_value" },
 	{ 0x92997ed8, "_printk" },
 	{ 0xd0da656b, "__stack_chk_fail" },
-	{ 0x4dfa8d4b, "mutex_lock" },
-	{ 0xa5e55057, "rdmsrl_safe_on_cpu" },
-	{ 0x54b1fac6, "__ubsan_handle_load_invalid_value" },
-	{ 0xa648e561, "__ubsan_handle_shift_out_of_bounds" },
-	{ 0x3213f038, "mutex_unlock" },
 	{ 0xfe0edd20, "pv_ops" },
 	{ 0x17de3d5, "nr_cpu_ids" },
 	{ 0x7aff77a3, "__cpu_present_mask" },
 	{ 0x63c4d61f, "__bitmap_weight" },
 	{ 0xb6cb556a, "_find_first_and_bit" },
-	{ 0x87a21cb3, "__ubsan_handle_out_of_bounds" },
-	{ 0x45d246da, "node_to_cpumask_map" },
-	{ 0xabba89f, "perf_event_enable" },
+	{ 0xf709cb89, "kthread_stop" },
 	{ 0x94dbad2, "perf_event_disable" },
+	{ 0x37dbdae4, "perf_event_release_kernel" },
 	{ 0xb3f7646e, "kthread_should_stop" },
+	{ 0x45d246da, "node_to_cpumask_map" },
+	{ 0x4dfa8d4b, "mutex_lock" },
+	{ 0xa5e55057, "rdmsrl_safe_on_cpu" },
+	{ 0x3213f038, "mutex_unlock" },
 	{ 0x7f02188f, "__msecs_to_jiffies" },
 	{ 0x54496b4, "schedule_timeout_interruptible" },
-	{ 0xf709cb89, "kthread_stop" },
-	{ 0x37dbdae4, "perf_event_release_kernel" },
+	{ 0x87a21cb3, "__ubsan_handle_out_of_bounds" },
 	{ 0x2800222e, "devm_kmalloc" },
 	{ 0xd7b002d, "boot_cpu_data" },
 	{ 0x96848186, "scnprintf" },
@@ -63,6 +60,9 @@ __used __section("__versions") = {
 	{ 0xac13d953, "kthread_create_on_node" },
 	{ 0xd9b11890, "wake_up_process" },
 	{ 0x8096f634, "perf_event_create_kernel_counter" },
+	{ 0x54b1fac6, "__ubsan_handle_load_invalid_value" },
+	{ 0xa648e561, "__ubsan_handle_shift_out_of_bounds" },
+	{ 0xabba89f, "perf_event_enable" },
 	{ 0xe9925143, "__platform_driver_register" },
 	{ 0x88ed50ea, "platform_device_alloc" },
 	{ 0x66b467be, "platform_driver_unregister" },
@@ -83,4 +83,4 @@ MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0030:feature:*");
 MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0050:feature:*");
 MODULE_ALIAS("platform:kernel_energy_driver");
 
-MODULE_INFO(srcversion, "5C85B1BAAE7556225C30D31");
+MODULE_INFO(srcversion, "5849A8EE3F953635B028E27");

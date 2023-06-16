@@ -23,12 +23,15 @@
 
 // #include <linux/ftrace.h>
 
+
+// #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+#define pr_fmt(fmt) /* KBUILD_MODNAME */ "%s(): " fmt, __func__
+
+// do not move header files above the pr_fmt format statements!
 #include "cpu-info.h"
 #include "energy.h"
 #include "perf.h"
 
-// #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-#define pr_fmt(fmt) /* KBUILD_MODNAME */ "%s(): " fmt, __func__
 
 #define DRIVER_NAME "kernel_energy_driver"
 #define DRIVER_MODULE_VERSION "1.0"
@@ -281,7 +284,6 @@ static const struct hwmon_ops energy_ops_perf = {
 
 static int energy_accumulator(void *p)
 {
-	printk(KERN_ALERT "%s()\n", __FUNCTION__);
 	energy_t *data = (energy_t *)p;
 	unsigned int timeout_ms = data->timeout_ms;
 
@@ -295,7 +297,7 @@ static int energy_accumulator(void *p)
 		}
 
 		long accum_waited = schedule_timeout_interruptible(msecs_to_jiffies(timeout_ms));
-		printk(KERN_ALERT "timeout: %u, accum_waited: %ld\n", timeout_ms, accum_waited);
+		pr_alert("timeout: %u, accum_waited: %ld\n", timeout_ms, accum_waited);
 	}
 	return 0;
 }
@@ -453,7 +455,6 @@ static int create_energy_sensor(struct device *dev)
 	ret |= alloc_sensor_accumulator(dev);
 	ret |= alloc_label_l(dev);
 
-	// initialize perf backend if mode == 1
 	ret |= init_perf_backend(dev);
 
 	return ret;
@@ -468,7 +469,6 @@ static const struct x86_cpu_id amd_ryzen_cpu_ids_with_64bit_rapl_counters[] = {
 
 static inline void set_hwmon_chip_info(energy_t *data)
 {
-
 	if (mode == 0)
 	{
 		pr_alert("[mode]: using default msr mode.\n");
@@ -564,7 +564,7 @@ static int energy_probe(struct platform_device *pd)
 	return PTR_ERR_OR_ZERO(energy_thread);
 }
 
-static inline int release_perf_backend(struct device *dev)
+static int release_perf_backend(struct device *dev)
 {
 	int ret = 0;
 	if (mode == 1)

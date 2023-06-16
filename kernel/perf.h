@@ -87,7 +87,7 @@ static int enable_perf_events(struct device *dev)
 
 static int disable_perf_events(struct device *dev)
 {
-	pr_info("\n");
+	pr_alert("\n");
 	energy_t *data = dev_get_drvdata(dev);
 	for (unsigned int cpu = 0; cpu < data->nr_cpus; cpu++)
 	{
@@ -105,7 +105,7 @@ static int disable_perf_events(struct device *dev)
 
 static int release_perf_event_kernel_counters(struct device *dev)
 {
-	pr_info("\n");
+	pr_alert("\n");
 	int ret = 0;
 	energy_t *data = dev_get_drvdata(dev);
 	for (unsigned int cpu = 0; cpu < data->nr_cpus; cpu++)
