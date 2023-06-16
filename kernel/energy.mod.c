@@ -43,13 +43,11 @@ __used __section("__versions") = {
 	{ 0x7aff77a3, "__cpu_present_mask" },
 	{ 0x63c4d61f, "__bitmap_weight" },
 	{ 0xb6cb556a, "_find_first_and_bit" },
-	{ 0x4dfa8d4b, "mutex_lock" },
-	{ 0xa5e55057, "rdmsrl_safe_on_cpu" },
-	{ 0x54b1fac6, "__ubsan_handle_load_invalid_value" },
-	{ 0xa648e561, "__ubsan_handle_shift_out_of_bounds" },
-	{ 0x3213f038, "mutex_unlock" },
 	{ 0xb3f7646e, "kthread_should_stop" },
 	{ 0x45d246da, "node_to_cpumask_map" },
+	{ 0x4dfa8d4b, "mutex_lock" },
+	{ 0xa5e55057, "rdmsrl_safe_on_cpu" },
+	{ 0x3213f038, "mutex_unlock" },
 	{ 0x7f02188f, "__msecs_to_jiffies" },
 	{ 0x54496b4, "schedule_timeout_interruptible" },
 	{ 0x87a21cb3, "__ubsan_handle_out_of_bounds" },
@@ -65,6 +63,8 @@ __used __section("__versions") = {
 	{ 0xfa55b3ee, "kmem_cache_alloc_trace" },
 	{ 0x8096f634, "perf_event_create_kernel_counter" },
 	{ 0xabba89f, "perf_event_enable" },
+	{ 0x54b1fac6, "__ubsan_handle_load_invalid_value" },
+	{ 0xa648e561, "__ubsan_handle_shift_out_of_bounds" },
 	{ 0x8d522714, "__rcu_read_lock" },
 	{ 0x2469810f, "__rcu_read_unlock" },
 	{ 0xe9925143, "__platform_driver_register" },
@@ -87,4 +87,4 @@ MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0030:feature:*");
 MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0050:feature:*");
 MODULE_ALIAS("platform:kernel_energy_driver");
 
-MODULE_INFO(srcversion, "3AEA51D23BFB1394156ED4D");
+MODULE_INFO(srcversion, "2CDEAC24B677ACF3D654E39");

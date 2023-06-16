@@ -257,7 +257,7 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 		*val = value;
 		mutex_unlock(&data->lock);
 
-		add_delta_core(data, channel, cpu, val);
+		// add_delta_core(data, channel, cpu, val);
 	}
 
 	return 0;
