@@ -9,24 +9,18 @@ public class Matrix {
 
     Scanner in = new Scanner(System.in);
 
-    public static void main(String[] args) {
-        System.out.println("Hello world!");
-
-        new Matrix().run();
-    }
-
     public void run() {
-        do {
-            initSize();
-            int[][] a = new int[SIZE][SIZE];
-            int[][] b = new int[SIZE][SIZE];
+        initSize();
+        int[][] a = new int[SIZE][SIZE];
+        int[][] b = new int[SIZE][SIZE];
 
-            initMatrix(a, MAX, MIN);
-            initMatrix(b, MAX, MIN);
+        initMatrix(a, MAX, MIN);
+        initMatrix(b, MAX, MIN);
 
-            int[][] c = matrixMultiply(a, b);
-            printMatrix(c);
-        } while (runAgain());
+        int[][] c = matrixMultiply(a, b);
+//        printMatrix(c);
+//        do {
+//        } while (runAgain());
     }
 
     private boolean runAgain() {

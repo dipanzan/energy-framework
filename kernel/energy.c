@@ -23,8 +23,9 @@
 
 // #include <linux/ftrace.h>
 
-#include "energy.h"
 #include "cpu-info.h"
+#include "energy.h"
+#include "perf.h"
 
 // #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #define pr_fmt(fmt) /* KBUILD_MODNAME */ "%s(): " fmt, __func__
@@ -150,7 +151,6 @@ static void add_delta_core(energy_t *data, int channel, int cpu, long *val)
 		}
 	}
 	energy_consumed_ujoules(data, value, val);
-
 	mutex_unlock(&data->lock);
 }
 
@@ -225,7 +225,6 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 
 		mutex_lock(&data->lock);
 		perf_event_enable(event);
-		msleep(3000);
 		value = perf_event_read_value(event, &enabled, &running);
 		perf_event_disable(event);
 		*val = value;
@@ -239,7 +238,7 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 
 static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
-	printk(KERN_ALERT "%s() called\n", __FUNCTION__);
+	pr_alert("\n", __FUNCTION__);
 	energy_t *data = dev_get_drvdata(dev);
 	int cpu;
 
@@ -407,64 +406,6 @@ static int alloc_label_l(struct device *dev)
 	return 0;
 }
 
-static inline void set_perf_event_energy_attrs(energy_t *data, struct perf_event_attr *attrs)
-{
-	for (unsigned int cpu = 0; cpu < data->nr_cpus; cpu++)
-	{
-		attrs[cpu].type = ENERGY_TYPE;
-		attrs[cpu].config = ENERGY_CONFIG;
-		attrs[cpu].exclude_user = 0;
-		attrs[cpu].exclude_kernel = 0;
-		attrs[cpu].pinned = 1;
-		attrs[cpu].inherit = 1;
-		attrs[cpu].comm = 1;
-		attrs[cpu].sample_type = PERF_SAMPLE_IDENTIFIER;
-		attrs[cpu].read_format = PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING | PERF_FORMAT_ID;
-		attrs[cpu].disabled = 1;
-		attrs[cpu].aux_output = 0;
-	}
-	data->attrs = attrs;
-}
-
-static int alloc_perf_event_attrs(struct device *dev)
-{
-	energy_t *data = dev_get_drvdata(dev);
-	struct perf_event_attr *attrs = devm_kcalloc(dev, data->nr_cpus, sizeof(struct perf_event_attr), GFP_KERNEL);
-	if (!attrs)
-	{
-		return -ENOMEM;
-	}
-	set_perf_event_energy_attrs(data, attrs);
-	return 0;
-}
-
-static void perf_overflow_handler(struct perf_event *event, struct perf_sample_data *data, struct pt_regs *regs)
-{
-	u64 enabled, running, counter;
-	counter = perf_event_read_value(event, &enabled, &running);
-	pr_alert("counter overflow: %llu\n", counter);
-}
-
-static int alloc_perf_event_kernel_counters(struct device *dev)
-{
-	pr_info("\n");
-	energy_t *data = dev_get_drvdata(dev);
-	struct perf_event_attr *attrs = data->attrs;
-
-	for (unsigned int cpu = 0; cpu < data->nr_cpus; cpu++)
-	{
-		struct perf_event *event = perf_event_create_kernel_counter(&attrs[cpu], cpu, NULL, perf_overflow_handler, NULL);
-		if (IS_ERR(event))
-		{
-			pr_alert("perf_event_create failed on CPU[%d] with error: %ld\n", cpu, PTR_ERR(event));
-			return PTR_ERR(event);
-		}
-		print_perf_event_state(event);
-		data->events[cpu] = event;
-	}
-	return 0;
-}
-
 static int custom_match_dev(struct device *dev, void *data)
 {
 	/* this function implements the comaparison logic. Return not zero if device
@@ -490,62 +431,6 @@ static struct device *find_device(void)
 	}
 	pr_info("DEVICE NOT FOUND\n!");
 	return NULL;
-}
-
-static inline void print_perf_pmu(struct perf_event *event, unsigned int cpu)
-{
-	const char *name = event->pmu->name;
-	pr_info("CPU[%d]: pmu: %s\n", cpu, name);
-}
-
-static int enable_perf_events(struct device *dev)
-{
-	pr_info("\n");
-	energy_t *data = dev_get_drvdata(dev);
-	for (unsigned int cpu = 0; cpu < data->nr_cpus; cpu++)
-	{
-		if (!cpu_online(cpu))
-		{
-			continue;
-		}
-		struct perf_event *event = data->events[cpu];
-		perf_event_enable(event);
-
-		print_perf_pmu(event, cpu);
-		print_perf_event_state(event);
-	}
-	return 0;
-}
-
-static int disable_perf_events(struct device *dev)
-{
-	pr_info("\n");
-	energy_t *data = dev_get_drvdata(dev);
-	for (unsigned int cpu = 0; cpu < data->nr_cpus; cpu++)
-	{
-		if (!cpu_online(cpu))
-		{
-			continue;
-		}
-		struct perf_event *event = data->events[0];
-		perf_event_disable(event);
-		print_perf_event_state(event);
-	}
-
-	return 0;
-}
-
-static int release_perf_event_kernel_counters(struct device *dev)
-{
-	pr_info("\n");
-	int ret = 0;
-	energy_t *data = dev_get_drvdata(dev);
-	for (unsigned int cpu = 0; cpu < data->nr_cpus; cpu++)
-	{
-		struct perf_event *event = data->events[cpu];
-		ret |= perf_event_release_kernel(event);
-	}
-	return ret;
 }
 
 static inline int init_perf_backend(struct device *dev)

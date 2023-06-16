@@ -48,7 +48,6 @@ __used __section("__versions") = {
 	{ 0x87a21cb3, "__ubsan_handle_out_of_bounds" },
 	{ 0x45d246da, "node_to_cpumask_map" },
 	{ 0xabba89f, "perf_event_enable" },
-	{ 0xf9a482f9, "msleep" },
 	{ 0x94dbad2, "perf_event_disable" },
 	{ 0xb3f7646e, "kthread_should_stop" },
 	{ 0x7f02188f, "__msecs_to_jiffies" },
@@ -84,4 +83,4 @@ MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0030:feature:*");
 MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0050:feature:*");
 MODULE_ALIAS("platform:kernel_energy_driver");
 
-MODULE_INFO(srcversion, "56A25330011399845856C95");
+MODULE_INFO(srcversion, "5C85B1BAAE7556225C30D31");

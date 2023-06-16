@@ -1,5 +1,6 @@
 package com.dipanzan;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -11,10 +12,10 @@ public class DemoApp {
 //        for (int i = 0; i < 100; i++) {
 //            app.sleeping(10);
 //        }
-
-        Matrix m = new Matrix();
-        m.run();
+        int core = Integer.parseInt(args[0]);
+        Method.execute(core, () -> new Matrix().run());
     }
+
 
     private void sleeping(long seconds) throws Exception {
         String energyPath2 = "/sys/class/hwmon/hwmon5/energy" + 1 + "_input";
