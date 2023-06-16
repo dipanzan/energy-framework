@@ -20,9 +20,9 @@
 #include <linux/slab.h>
 #include <linux/topology.h>
 #include <linux/types.h>
+#include <linux/perf_event.h>
 
 // #include <linux/ftrace.h>
-
 
 // #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #define pr_fmt(fmt) /* KBUILD_MODNAME */ "%s(): " fmt, __func__
@@ -31,7 +31,6 @@
 #include "cpu-info.h"
 #include "energy.h"
 #include "perf.h"
-
 
 #define DRIVER_NAME "kernel_energy_driver"
 #define DRIVER_MODULE_VERSION "1.0"
@@ -73,7 +72,7 @@ static void set_energy_unit(energy_t *data)
 	data->energy_unit = (energy_unit & AMD_ENERGY_UNIT_MASK) >> 8;
 }
 
-static inline u64 read_msr_on_cpu(int cpu, u32 reg)
+static u64 read_msr_on_cpu(int cpu, u32 reg)
 {
 	u64 value;
 	rdmsrl_safe_on_cpu(cpu, reg, &value);
@@ -97,14 +96,14 @@ static void accumulate_delta_pkg(energy_t *data, int cpu)
 	mutex_unlock(&data->lock);
 }
 
-static inline void read_pkg_energy(energy_t *data)
+static void read_pkg_energy(energy_t *data)
 {
 	int socket_node = data->nr_socks - 1;
 	int socket_cpu = cpumask_first_and(cpu_online_mask, cpumask_of_node(socket_node));
 	accumulate_delta_pkg(data, socket_cpu);
 }
 
-static inline void reset_core_id(energy_t *data)
+static void reset_core_id(energy_t *data)
 {
 	if (data->core_id >= data->nr_cpus)
 	{
@@ -112,7 +111,7 @@ static inline void reset_core_id(energy_t *data)
 	}
 }
 
-static inline void read_core_energy(energy_t *data)
+static void read_core_energy(energy_t *data)
 {
 	int cpu = data->core_id;
 	if (cpu_online(cpu))
@@ -121,7 +120,7 @@ static inline void read_core_energy(energy_t *data)
 	}
 }
 
-static inline void increment_core_id(energy_t *data)
+static void increment_core_id(energy_t *data)
 {
 	data->core_id++;
 }
@@ -157,7 +156,7 @@ static void add_delta_core(energy_t *data, int channel, int cpu, long *val)
 	mutex_unlock(&data->lock);
 }
 
-static inline void handle_ctr_overflow(energy_t *data, int channel, u64 value)
+static void handle_ctr_overflow(energy_t *data, int channel, u64 value)
 {
 	struct energy_accumulator *accum = &data->accums[channel];
 	if (value >= accum->prev_value)
@@ -172,7 +171,7 @@ static inline void handle_ctr_overflow(energy_t *data, int channel, u64 value)
 }
 
 /* Energy consumed = (1/(2^ESU) * RAW * 1000000UL) μJoules */
-static inline void energy_consumed_ujoules(energy_t *data, u64 value, long *val)
+static void energy_consumed_ujoules(energy_t *data, u64 value, long *val)
 {
 	*val = div64_ul(value * 1000000UL, BIT(data->energy_unit));
 }
@@ -204,11 +203,32 @@ static umode_t read_energy_visibility(const void *drv_data, enum hwmon_sensor_ty
 	return 0444;
 }
 
+
+static unsigned int find_sw_thread_num(unsigned int cpu)
+{
+	// Linux enumerates if SMT enabled aka hyperthreading, multiply by 2 to get correct hw thread for perf mode
+	/* 
+		0, 1,  2, 3,  4, 5,  6, 7,  8, 9,  10, 11,  12, 13,  14, 15
+		-----  -----  -----  -----  -----  -------	-------  -------
+		  0      1      2      3	  4		  5		   6		7
+	
+		0 -> [0, 1]
+		1 -> [2, 3]
+		2 -> [4, 5]
+		3 -> [6, 7]
+		4 -> [8, 9]
+		5 -> [10, 11]
+		6 -> [12, 13]
+		7 -> [14, 15]
+	*/
+	return cpu * 2;
+}
+
 static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
 	pr_alert("\n");
 	energy_t *data = dev_get_drvdata(dev);
-	int cpu;
+	unsigned int cpu;
 
 	if (channel >= data->nr_cpus)
 	{
@@ -223,17 +243,21 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 			return -ENODEV;
 		}
 
+		cpu = find_sw_thread_num(cpu);
 		struct perf_event *event = data->events[cpu];
+		print_perf_cpu(event);
+
 		u64 value, enabled, running;
 
-		mutex_lock(&data->lock);
-		perf_event_enable(event);
+		rcu_read_lock();
 		value = perf_event_read_value(event, &enabled, &running);
-		perf_event_disable(event);
+		rcu_read_unlock();
+
+		mutex_lock(&data->lock);
 		*val = value;
 		mutex_unlock(&data->lock);
 
-		// add_delta_core(data, channel, cpu, val);
+		add_delta_core(data, channel, cpu, val);
 	}
 
 	return 0;
@@ -302,12 +326,12 @@ static int energy_accumulator(void *p)
 	return 0;
 }
 
-static inline int num_siblings_per_core(void)
+static int num_siblings_per_core(void)
 {
 	return ((cpuid_ebx(0x8000001E) >> 8) & 0xFF) + 1;
 }
 
-static inline unsigned int get_core_cpu_count(void)
+static unsigned int get_core_cpu_count(void)
 {
 	/*
 	 * Energy counter register is accessed at core level.
@@ -316,7 +340,7 @@ static inline unsigned int get_core_cpu_count(void)
 	return num_present_cpus() / num_siblings_per_core();
 }
 
-static inline unsigned int get_socket_count(void)
+static unsigned int get_socket_count(void)
 {
 	struct cpuinfo_x86 *info = &boot_cpu_data;
 
@@ -327,15 +351,22 @@ static inline unsigned int get_socket_count(void)
 	return get_core_cpu_count() / info->x86_max_cores;
 }
 
+static unsigned int get_perf_cpu_count(void)
+{
+	// perf enumerates hw threads for SMT/hyper-threading, multiply by 2
+	return get_core_cpu_count() * 2;
+}
+
 static int set_cpu_and_socket(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);
 	data->nr_cpus = get_core_cpu_count();
 	data->nr_socks = get_socket_count();
+	data->nr_cpus_perf = get_perf_cpu_count();
 	return 0;
 }
 
-static inline void socket_config_with_hwmon_input_and_label(energy_t *data, unsigned int *socket_config)
+static void socket_config_with_hwmon_input_and_label(energy_t *data, unsigned int *socket_config)
 {
 	int i;
 	for (i = 0; i < data->nr_cpus + data->nr_socks; i++)
@@ -345,7 +376,7 @@ static inline void socket_config_with_hwmon_input_and_label(energy_t *data, unsi
 	socket_config[i] = 0;
 }
 
-static inline void set_hwmon_channel_info(energy_t *data, unsigned int *socket_config)
+static void set_hwmon_channel_info(energy_t *data, unsigned int *socket_config)
 {
 	struct hwmon_channel_info *info = &data->energy_info;
 	info->config = socket_config;
@@ -378,7 +409,7 @@ static int alloc_sensor_accumulator(struct device *dev)
 	return 0;
 }
 
-static inline void set_label_l(energy_t *data, char (*label_l)[10])
+static void set_label_l(energy_t *data, char (*label_l)[10])
 {
 	data->label = label_l;
 
@@ -435,7 +466,7 @@ static struct device *find_device(void)
 	return NULL;
 }
 
-static inline int init_perf_backend(struct device *dev)
+static int init_perf_backend(struct device *dev)
 {
 	int ret = 0;
 
@@ -443,10 +474,11 @@ static inline int init_perf_backend(struct device *dev)
 	{
 		ret |= alloc_perf_event_attrs(dev);
 		ret |= alloc_perf_event_kernel_counters(dev);
-		// ret |= enable_perf_events(dev);
+		ret |= enable_perf_events(dev);
 	}
 	return ret;
 }
+
 static int create_energy_sensor(struct device *dev)
 {
 	int ret = 0;
@@ -467,7 +499,7 @@ static const struct x86_cpu_id amd_ryzen_cpu_ids_with_64bit_rapl_counters[] = {
 	X86_MATCH_VENDOR_FAM_MODEL(AMD, 0x19, 0x50, NULL), // bit32? double-check please
 	{}};
 
-static inline void set_hwmon_chip_info(energy_t *data)
+static void set_hwmon_chip_info(energy_t *data)
 {
 	if (mode == 0)
 	{
@@ -498,7 +530,7 @@ static energy_t *alloc_energy_data(struct device *dev)
 	return data;
 }
 
-static inline void set_timeout_ms(energy_t *data)
+static void set_timeout_ms(energy_t *data)
 {
 	/*
 	 * On a system with peak wattage of 250W
@@ -507,18 +539,18 @@ static inline void set_timeout_ms(energy_t *data)
 	data->timeout_ms = 1000 * BIT(min(28, 31 - data->energy_unit)) / 250;
 }
 
-static inline void set_custom_timeout_ms(energy_t *data, const int timeout_ms)
+static void set_custom_timeout_ms(energy_t *data, const int timeout_ms)
 {
 	data->timeout_ms = timeout_ms;
 }
 
-static inline struct device *register_hwmon_device(struct device *dev, energy_t *data)
+static struct device *register_hwmon_device(struct device *dev, energy_t *data)
 {
 	struct device *hwmon_dev = devm_hwmon_device_register_with_info(dev, DRIVER_NAME, data, &data->chip, NULL);
 	return hwmon_dev;
 }
 
-static inline struct task_struct *start_energy_thread(struct device *hwmon_dev, energy_t *data)
+static struct task_struct *start_energy_thread(struct device *hwmon_dev, energy_t *data)
 {
 	data->wrap_accumulate = kthread_run(energy_accumulator, data, ENERGY_ACCUM_THREAD, dev_name(hwmon_dev));
 	return data->wrap_accumulate;
@@ -564,7 +596,7 @@ static int energy_probe(struct platform_device *pd)
 	return PTR_ERR_OR_ZERO(energy_thread);
 }
 
-static int release_perf_backend(struct device *dev)
+static int release_perf_counters(struct device *dev)
 {
 	int ret = 0;
 	if (mode == 1)
@@ -584,7 +616,7 @@ static int energy_remove(struct platform_device *pd)
 		ret |= kthread_stop(data->wrap_accumulate);
 	}
 
-	ret |= release_perf_backend(dev);
+	ret |= release_perf_counters(dev);
 	return ret;
 }
 
