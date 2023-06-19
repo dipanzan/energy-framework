@@ -9,6 +9,7 @@
 #include <linux/hwmon.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
+#include <linux/kprobes.h>
 #include <linux/list.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -22,6 +23,8 @@
 #include <linux/types.h>
 #include <linux/perf_event.h>
 
+#include <linux/kprobes.h>
+
 // #include <linux/ftrace.h>
 
 // #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -31,6 +34,7 @@
 #include "cpu-info.h"
 #include "energy.h"
 #include "perf.h"
+#include "sched.h"
 
 #define DRIVER_NAME "kernel_energy_driver"
 #define DRIVER_MODULE_VERSION "1.0"
@@ -203,15 +207,14 @@ static umode_t read_energy_visibility(const void *drv_data, enum hwmon_sensor_ty
 	return 0444;
 }
 
-
 static unsigned int find_sw_thread_num(unsigned int cpu)
 {
 	// Linux enumerates if SMT enabled aka hyperthreading, multiply by 2 to get correct hw thread for perf mode
-	/* 
+	/*
 		0, 1,  2, 3,  4, 5,  6, 7,  8, 9,  10, 11,  12, 13,  14, 15
 		-----  -----  -----  -----  -----  -------	-------  -------
 		  0      1      2      3	  4		  5		   6		7
-	
+
 		0 -> [0, 1]
 		1 -> [2, 3]
 		2 -> [4, 5]
@@ -265,7 +268,7 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 
 static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
-	pr_alert("\n", __FUNCTION__);
+	pr_alert("\n");
 	energy_t *data = dev_get_drvdata(dev);
 	int cpu;
 
@@ -657,9 +660,10 @@ static int __init energy_init(void)
 		return -ENODEV;
 	}
 
-	dump_cpu_info();
+	// dump_cpu_info();
 
-	int ret = platform_driver_register(&energy_driver);
+	int ret;
+	ret = platform_driver_register(&energy_driver);
 	if (ret)
 	{
 		return ret;
@@ -679,6 +683,9 @@ static int __init energy_init(void)
 		platform_driver_unregister(&energy_driver);
 		return ret;
 	}
+
+	init_kallsyms();
+
 	pr_alert("energy module loaded!\n");
 	return ret;
 }
@@ -687,6 +694,8 @@ static void __exit energy_exit(void)
 {
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
+	
+
 	pr_alert("energy module unloaded\n");
 }
 
