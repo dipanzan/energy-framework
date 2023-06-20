@@ -75,9 +75,7 @@ __used __section("__versions") = {
 	{ 0x58aa6397, "platform_device_put" },
 	{ 0xfcca5424, "register_kprobe" },
 	{ 0x65487097, "__x86_indirect_thunk_rax" },
-	{ 0xa2e9ed7e, "init_task" },
 	{ 0x63026490, "unregister_kprobe" },
-	{ 0x1093837e, "__get_task_comm" },
 	{ 0x61901594, "platform_device_unregister" },
 	{ 0x4fa8f1f1, "param_ops_int" },
 	{ 0xb4b19daa, "param_ops_charp" },
@@ -93,4 +91,4 @@ MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0030:feature:*");
 MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0050:feature:*");
 MODULE_ALIAS("platform:kernel_energy_driver");
 
-MODULE_INFO(srcversion, "DD4837ADDA2F0031550CC28");
+MODULE_INFO(srcversion, "BB4D006671D01C0C20A558B");

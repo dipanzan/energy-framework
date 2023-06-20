@@ -3,18 +3,21 @@ package com.dipanzan;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Scanner;
 
 public class DemoApp {
     public static void main(String[] args) throws Exception {
-        System.out.println("Application Start");
         long pid = ProcessHandle.current().pid();
         System.out.println(pid);
 
+        Scanner sc = new Scanner(System.in);
+        System.out.print("Application Proceed: ");
+        sc.nextLine();
 
-//        int core = Integer.parseInt(args[0]);
-//        Method.execute(core, () -> new Matrix().run());
+//        Method.execute(() -> new Matrix().run());
 
-        Method.execute(() -> new Matrix().run());
+        int numThreads = Integer.parseInt(args[0]);
+        Method.execute(() -> new MultiThreaded().run(numThreads));
 
     }
 

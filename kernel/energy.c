@@ -690,8 +690,7 @@ static int __init energy_init(void)
 
 	init_kallsyms();
 	// register_ftrace_function(&ops);
-
-	find_process(pid);
+	// dump_process_and_threads(pid);
 
 	pr_alert("energy module loaded!\n");
 	return ret;
