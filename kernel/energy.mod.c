@@ -31,17 +31,18 @@ static const struct modversion_info ____versions[]
 __used __section("__versions") = {
 	{ 0xbdfb6dbb, "__fentry__" },
 	{ 0x5b8239ca, "__x86_return_thunk" },
+	{ 0x92997ed8, "_printk" },
+	{ 0xcf540422, "ftrace_set_filter" },
 	{ 0x5a5a2271, "__cpu_online_mask" },
 	{ 0xf709cb89, "kthread_stop" },
-	{ 0x92997ed8, "_printk" },
 	{ 0x94dbad2, "perf_event_disable" },
 	{ 0x37dbdae4, "perf_event_release_kernel" },
 	{ 0xaad72ea0, "perf_event_read_value" },
 	{ 0xd0da656b, "__stack_chk_fail" },
-	{ 0x7aff77a3, "__cpu_present_mask" },
-	{ 0x17de3d5, "nr_cpu_ids" },
-	{ 0x63c4d61f, "__bitmap_weight" },
 	{ 0xfe0edd20, "pv_ops" },
+	{ 0x17de3d5, "nr_cpu_ids" },
+	{ 0x7aff77a3, "__cpu_present_mask" },
+	{ 0x63c4d61f, "__bitmap_weight" },
 	{ 0xb6cb556a, "_find_first_and_bit" },
 	{ 0xb3f7646e, "kthread_should_stop" },
 	{ 0x45d246da, "node_to_cpumask_map" },
@@ -74,7 +75,9 @@ __used __section("__versions") = {
 	{ 0x58aa6397, "platform_device_put" },
 	{ 0xfcca5424, "register_kprobe" },
 	{ 0x65487097, "__x86_indirect_thunk_rax" },
+	{ 0xa2e9ed7e, "init_task" },
 	{ 0x63026490, "unregister_kprobe" },
+	{ 0x1093837e, "__get_task_comm" },
 	{ 0x61901594, "platform_device_unregister" },
 	{ 0x4fa8f1f1, "param_ops_int" },
 	{ 0xb4b19daa, "param_ops_charp" },
@@ -90,4 +93,4 @@ MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0030:feature:*");
 MODULE_ALIAS("cpu:type:x86,ven0002fam0019mod0050:feature:*");
 MODULE_ALIAS("platform:kernel_energy_driver");
 
-MODULE_INFO(srcversion, "D0FF704A2EFC34ED9F30CC7");
+MODULE_INFO(srcversion, "DD4837ADDA2F0031550CC28");

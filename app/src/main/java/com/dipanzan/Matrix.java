@@ -44,6 +44,7 @@ public class Matrix {
     }
 
     private int[][] matrixMultiply(int[][] a, int[][] b) {
+        System.out.println("Multiplying matrix.");
         int[][] c = new int[SIZE][SIZE];
 
         for (int i = 0; i < SIZE; i++) {
@@ -53,11 +54,13 @@ public class Matrix {
                 }
             }
         }
+        System.out.println("Multiplication done!");
         return c;
     }
 
 
     private void initMatrix(int[][] matrix, int max, int min) {
+
         System.out.println("Populating matrix with random values [0-999].");
         for (int i = 0; i < SIZE; i++) {
             for (int j = 0; j < SIZE; j++) {

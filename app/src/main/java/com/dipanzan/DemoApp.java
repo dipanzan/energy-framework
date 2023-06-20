@@ -7,13 +7,15 @@ import java.nio.file.Paths;
 public class DemoApp {
     public static void main(String[] args) throws Exception {
         System.out.println("Application Start");
+        long pid = ProcessHandle.current().pid();
+        System.out.println(pid);
 
-//        DemoApp app = new DemoApp();
-//        for (int i = 0; i < 100; i++) {
-//            app.sleeping(10);
-//        }
-        int core = Integer.parseInt(args[0]);
-        Method.execute(core, () -> new Matrix().run());
+
+//        int core = Integer.parseInt(args[0]);
+//        Method.execute(core, () -> new Matrix().run());
+
+        Method.execute(() -> new Matrix().run());
+
     }
 
 

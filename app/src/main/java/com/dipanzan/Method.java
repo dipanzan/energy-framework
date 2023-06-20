@@ -10,6 +10,10 @@ public class Method {
         void execute();
     }
 
+    public static void execute(Execute e)
+    {
+        e.execute();
+    }
     public static void execute(int core, Execute e) {
         long before = readEnergy(core);
         e.execute();

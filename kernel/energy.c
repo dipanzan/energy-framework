@@ -30,10 +30,14 @@
 // #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #define pr_fmt(fmt) /* KBUILD_MODNAME */ "%s(): " fmt, __func__
 
-// do not move header files above the pr_fmt format statements!
+/* 	do not move header files above the pr_fmt format statements!
+	otherwise the pr_fmt() family of functions don't work.
+*/
 #include "cpu-info.h"
 #include "energy.h"
+#include "ftrace.h"
 #include "perf.h"
+#include "process.h"
 #include "sched.h"
 
 #define DRIVER_NAME "kernel_energy_driver"
@@ -53,19 +57,19 @@ MODULE_VERSION(DRIVER_MODULE_VERSION);
 
 #define ENERGY_ACCUM_THREAD "energy_runner"
 
-static char *target_process_name = NULL;
-static int target_process_pid = -1;
-static int target_process_cpu = -1;
+static char *name = NULL;
+static int pid = -1;
+static int cpu = -1;
 static int mode = 0;
 
-module_param(target_process_name, charp, 0000);
-module_param(target_process_pid, int, 0000);
-module_param(target_process_cpu, int, 0000);
+module_param(name, charp, 0000);
+module_param(pid, int, 0000);
+module_param(cpu, int, 0000);
 module_param(mode, int, 0000);
 
-MODULE_PARM_DESC(target_process_name, "target_process_name is the process name to attach to.");
-MODULE_PARM_DESC(target_process_pid, "target_process_pid is the PID to to attach to.");
-MODULE_PARM_DESC(target_process_cpu, "target_process_cpu is the target CPU for energy measurement.");
+MODULE_PARM_DESC(name, "[name] is the process name to attach to.");
+MODULE_PARM_DESC(pid, "[pid] is the PID to to attach to.");
+MODULE_PARM_DESC(cpu, "[cpu] is the target CPU for energy measurement.");
 MODULE_PARM_DESC(mode, "[mode] is the backend mode for energy data source. [0]- MSR, [1]- perf");
 
 static void set_energy_unit(energy_t *data)
@@ -654,15 +658,15 @@ MODULE_DEVICE_TABLE(x86cpu, amd_ryzen_cpu_ids);
 
 static int __init energy_init(void)
 {
+	int ret;
+
+	dump_cpu_info();
 	// check if boot-cpu matches with current online-cpu
 	if (!x86_match_cpu(amd_ryzen_cpu_ids))
 	{
 		return -ENODEV;
 	}
 
-	// dump_cpu_info();
-
-	int ret;
 	ret = platform_driver_register(&energy_driver);
 	if (ret)
 	{
@@ -685,6 +689,9 @@ static int __init energy_init(void)
 	}
 
 	init_kallsyms();
+	// register_ftrace_function(&ops);
+
+	find_process(pid);
 
 	pr_alert("energy module loaded!\n");
 	return ret;
@@ -694,7 +701,8 @@ static void __exit energy_exit(void)
 {
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
-	
+
+	// unregister_ftrace_function(&ops);
 
 	pr_alert("energy module unloaded\n");
 }
