@@ -18,6 +18,7 @@
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
 #include <linux/sched.h>
+#include <linux/signal.h>
 #include <linux/slab.h>
 #include <linux/topology.h>
 #include <linux/types.h>
@@ -25,7 +26,7 @@
 
 #include <linux/kprobes.h>
 
-// #include <linux/ftrace.h>
+#include <linux/ftrace.h>
 
 // #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #define pr_fmt(fmt) /* KBUILD_MODNAME */ "%s(): " fmt, __func__
@@ -38,7 +39,7 @@
 #include "ftrace.h"
 #include "perf.h"
 #include "process.h"
-#include "sched.h"
+#include "kprobes.h"
 
 #define DRIVER_NAME "kernel_energy_driver"
 #define DRIVER_MODULE_VERSION "1.0"
@@ -688,9 +689,14 @@ static int __init energy_init(void)
 		return ret;
 	}
 
+	// dump_process_info(pid);
+
 	init_kallsyms();
-	// register_ftrace_function(&ops);
-	// dump_process_and_threads(pid);
+	set_ftrace_filter_func("1");
+	setup_ftrace_filter();
+	register_ftrace_function(&ops);
+
+
 
 	pr_alert("energy module loaded!\n");
 	return ret;
@@ -701,7 +707,7 @@ static void __exit energy_exit(void)
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
 
-	// unregister_ftrace_function(&ops);
+	unregister_ftrace_function(&ops);
 
 	pr_alert("energy module unloaded\n");
 }
