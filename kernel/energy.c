@@ -36,10 +36,11 @@
 */
 #include "cpu-info.h"
 #include "energy.h"
+#include "kprobes.h"
 #include "ftrace.h"
+#include "lookup_funcs.h"
 #include "perf.h"
 #include "process.h"
-#include "kprobes.h"
 
 #define DRIVER_NAME "kernel_energy_driver"
 #define DRIVER_MODULE_VERSION "1.0"
@@ -657,6 +658,16 @@ static const struct x86_cpu_id amd_ryzen_cpu_ids[] __initconst = {
 
 MODULE_DEVICE_TABLE(x86cpu, amd_ryzen_cpu_ids);
 
+// careful: 2nd: hooked fn, 3rd: actual fn pointer to pointer!!
+// static struct ftrace_hook hooked_functions[] = {
+//     HOOK("sys_clone", fh_sys_clone, &real_sys_clone),
+//     HOOK("__x64_sys_execveat", fh_sys_execve, &real_sys_execve),
+// };
+
+// name, real, modified
+// struct ftrace_hook fh = HOOK("__x64_sys_execveat", fh_sys_execve, &real_sys_execve);
+struct ftrace_hook fh = HOOK("schedule", &real_schedule, fh_schedule);
+
 static int __init energy_init(void)
 {
 	int ret;
@@ -691,12 +702,16 @@ static int __init energy_init(void)
 
 	// dump_process_info(pid);
 
-	init_kallsyms();
-	set_ftrace_filter_func("1");
-	setup_ftrace_filter();
-	register_ftrace_function(&ops);
+	init_kprobe();
+
+	lookup_sched_functions();
+	print_sched_functions();
+
+	// setup_ftrace_filter();
+	// register_ftrace_function(&ops);
 
 
+	fh_install_hook(&fh);
 
 	pr_alert("energy module loaded!\n");
 	return ret;
@@ -707,7 +722,11 @@ static void __exit energy_exit(void)
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
 
-	unregister_ftrace_function(&ops);
+	// unregister_ftrace_function(&ops);
+
+	fh_remove_hook(&fh);
+
+	release_kprobe();
 
 	pr_alert("energy module unloaded\n");
 }
