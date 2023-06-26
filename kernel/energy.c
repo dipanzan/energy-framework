@@ -707,7 +707,7 @@ static int __init energy_init(void)
 	lookup_sched_functions();
 	print_sched_functions();
 
-	// setup_ftrace_filter();
+	setup_ftrace_filter();
 	// register_ftrace_function(&ops);
 
 

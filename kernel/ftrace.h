@@ -1,7 +1,16 @@
 #ifndef _FTRACE_H
 #define _FTRACE_H
 
-/* https://www.apriorit.com/dev-blog/546-hooking-linux-funhttps://www.apriorit.com/dev-blog/546-hooking-linux-functions-2ctions-2 */
+static asmlinkage void (*real_schedule)(void);
+
+static asmlinkage void fh_schedule(void)
+{
+    pr_alert("schedule-in\n");
+    real_schedule();
+    pr_alert("schedule-out\n");
+}
+
+/* https://www.apriorit.com/dev-blog/546-hooking-linux-funhttps://www.apriorit.com/dev-blog/546-hooking-linux-functions-2-actions-2 */
 
 #define SCHEDULE_FUNC "schedule"
 
@@ -10,7 +19,7 @@
         .name = (_name),                  \
         .original = (_original),          \
         .function = (_function),          \ 
-        .ops = { 0 }                      \
+        .ops = {0},                       \
     }
 
 struct ftrace_hook
@@ -26,7 +35,10 @@ struct ftrace_hook
 static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *ops, struct ftrace_regs *regs)
 {
     struct ftrace_hook *hook = container_of(ops, struct ftrace_hook, ops);
-    regs->regs.ip = (unsigned long)hook->function;
+    if (!within_module(parent_ip, THIS_MODULE))
+    {
+        regs->regs.ip = (unsigned long)hook->function;
+    }
 }
 
 static int resolve_hook_address(struct ftrace_hook *hook)
@@ -38,7 +50,7 @@ static int resolve_hook_address(struct ftrace_hook *hook)
         return -ENOENT;
     }
 
-    pr_alert("%s(): %p found.\n", hook->name, &hook->address);
+    pr_alert("%s(): %lx found.\n", hook->name, hook->address);
     *((unsigned long *)hook->original) = hook->address;
     return 0;
 }
@@ -52,17 +64,15 @@ static int fh_install_hook(struct ftrace_hook *hook)
         return err;
     }
     hook->ops.func = fh_ftrace_thunk;
-    // TODO: recursion?
-    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS | FTRACE_OPS_FL_IPMODIFY | FTRACE_OPS_FL_RECURSION;
+    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS_IF_SUPPORTED | FTRACE_OPS_FL_IPMODIFY; // TODO: recursion?
 
-    return 0;
-
-    err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 0);
+    err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 1);
     if (err)
     {
         pr_alert("ftrace_set_filter_ip() failed: %d\n", err);
         return err;
     }
+
     err = register_ftrace_function(&hook->ops);
     if (err)
     {
@@ -116,15 +126,6 @@ static asmlinkage long fh_sys_execve(const char __user *filename,
     pr_alert("execve() returns: %ldn", ret);
 
     return ret;
-}
-
-static asmlinkage void (*real_schedule)(void);
-
-static asmlinkage void fh_schedule(void)
-{
-    pr_alert("schedule-in\n");
-    real_schedule();
-    pr_alert("schedule-out\n");
 }
 
 static void notrace ftrace_callback(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *op, struct ftrace_regs *regs)
