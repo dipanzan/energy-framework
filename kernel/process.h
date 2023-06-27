@@ -51,6 +51,17 @@ static void dump_process_info(pid_t pid)
     print_threads(p);
 }
 
+static struct task_struct *get_process(pid_t pid)
+{
+    char comm[TASK_COMM_LEN];
+    
+    struct pid *found_pid = find_get_pid(pid);
+    struct task_struct *p = get_pid_task(found_pid, PIDTYPE_PID);
+
+    pr_alert("tgid:[%d]\tpid:[%d]\tthread:%s\tCPU:%d\n", p->tgid, p->pid, get_task_comm(comm, p), p->thread_info.cpu);
+    return p;
+}
+
 static struct task_struct *find_process(pid_t pid)
 {
     char comm[TASK_COMM_LEN];

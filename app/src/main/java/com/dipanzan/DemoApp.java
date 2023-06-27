@@ -16,7 +16,7 @@ public class DemoApp {
 //        Method.execute(() -> new Matrix().run());
 
         int numThreads = Integer.parseInt(args[0]);
-        Method.execute(() -> new MultiThreaded().run(numThreads));
+        Method.execute(() -> new Matrix().run());
 
     }
 
