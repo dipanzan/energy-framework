@@ -6,6 +6,7 @@
 #include <linux/cpumask.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/ftrace.h>
 #include <linux/hwmon.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
@@ -14,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/mutex.h>
+#include <linux/perf_event.h>
 #include <linux/processor.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
@@ -22,13 +24,20 @@
 #include <linux/slab.h>
 #include <linux/topology.h>
 #include <linux/types.h>
-#include <linux/perf_event.h>
-
-#include <linux/kprobes.h>
-
-#include <linux/ftrace.h>
 
 #include <linux/trace_events.h>
+
+/*
+ * Must include the event header that the custom event will attach to,
+ * from the C file, and not in the custom header file.
+ */
+#include <trace/events/sched.h>
+
+/* Declare CREATE_CUSTOM_TRACE_EVENTS before including custom header */
+#define CREATE_CUSTOM_TRACE_EVENTS
+
+#include "trace_custom_sched.h"
+
 
 // #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #define pr_fmt(fmt) /* KBUILD_MODNAME */ "%s(): " fmt, __func__
@@ -44,7 +53,6 @@
 #include "perf.h"
 #include "process.h"
 #include "preempt.h"
-#include "tracepoint.h"
 
 #define DRIVER_NAME "kernel_energy_driver"
 #define DRIVER_MODULE_VERSION "1.0"
@@ -77,6 +85,26 @@ MODULE_PARM_DESC(name, "[name] is the process name to attach to.");
 MODULE_PARM_DESC(pid, "[pid] is the PID to to attach to.");
 MODULE_PARM_DESC(cpu, "[cpu] is the target CPU for energy measurement.");
 MODULE_PARM_DESC(mode, "[mode] is the backend mode for energy data source. [0]- MSR, [1]- perf");
+
+
+/*
+ * As the trace events are not exported to modules, the use of
+ * for_each_kernel_tracepoint() is needed to find the trace event
+ * to attach to. The fct() function below, is a callback that
+ * will be called for every event.
+ *
+ * Helper functions are created by the TRACE_CUSTOM_EVENT() macro
+ * update the event. Those are of the form:
+ *
+ *    trace_custom_event_<event>_update()
+ *
+ * Where <event> is the event to attach.
+ */
+static void fct(struct tracepoint *tp, void *priv)
+{
+	// trace_custom_event_sched_switch_update(tp);
+	// trace_custom_event_sched_waking_update(tp);
+}
 
 static void set_energy_unit(energy_t *data)
 {
@@ -706,7 +734,7 @@ static int __init energy_init(void)
 
 	// dump_process_info(pid);
 
-	struct task_struct *p = get_process(pid);
+	// struct task_struct *p = get_process(pid);
 	// __preempt_notifier_register(&p_notifier, p);
 	// preempt_notifier_register(&p_notifier);
 
@@ -717,23 +745,7 @@ static int __init energy_init(void)
 	// register_ftrace_function(&ops);
 	// fh_install_hook(&fh);
 
-	struct dynevent_cmd cmd;
-	char *buf;
-
-	/* Create a buffer to hold the generated command */
-	// buf = kzalloc(MAX_DYNEVENT_CMD_LEN, GFP_KERNEL);
-
-	// /* Before generating the command, initialize the cmd object */
-	// synth_event_cmd_init(&cmd, buf, MAX_DYNEVENT_CMD_LEN);
-
-	// ret = synth_event_create("schedtest", sched_fields, ARRAY_SIZE(sched_fields), THIS_MODULE);
-
-	// ret = synth_event_gen_cmd_start(&cmd, "schedtest", THIS_MODULE,
-	// 								"pid_t", "next_pid_field",
-	// 								"u64", "ts_ns");
-
-	// synth_event_trace();
-
+	
 
 	pr_alert("energy module loaded!\n");
 	return ret;
