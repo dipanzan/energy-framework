@@ -77,12 +77,12 @@ static int read_energy_string(struct device *dev, enum hwmon_sensor_types type, 
 
 static int energy_accumulator(void *p);
 
-static int num_siblings_per_core(void);
+static unsigned int num_siblings_per_core(void);
 static unsigned int get_core_cpu_count(void);
 static unsigned int get_socket_count(void);
-static int set_cpu_and_socket(struct device *dev);
+static int alloc_cpu_and_socket(struct device *dev);
 
-static void socket_config_with_hwmon_input_and_label(energy_t *data, unsigned int *socket_config);
+static void set_socket_config_hwmon(energy_t *data, unsigned int *socket_config);
 static void set_hwmon_channel_info(energy_t *data, unsigned int *socket_config);
 static int alloc_socket_config(struct device *dev);
 
@@ -91,7 +91,7 @@ static int alloc_sensor_accumulator(struct device *dev);
 static void set_label_l(energy_t *data, char (*label_l)[10]);
 static int alloc_label_l(struct device *dev);
 
-static int create_energy_sensor(struct device *dev);
+static int alloc_energy_sensor(struct device *dev);
 static void set_hwmon_chip_info(energy_t *data);
 static energy_t *alloc_energy_data(struct device *dev);
 
@@ -105,9 +105,5 @@ static int energy_probe(struct platform_device *pd);
 static int energy_remove(struct platform_device *pd);
 
 static void energy_consumed_ujoules(energy_t *data, u64 value, long *val);
-
-// TODO: perf headers
-// static int alloc_perf_event_attrs(struct device *dev);
-// static int alloc_perf_event_kernel_counters(struct device *dev);
 
 #endif /* _ENERGY_H */

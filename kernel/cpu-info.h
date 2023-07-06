@@ -1,6 +1,37 @@
 #ifndef _CPU_INFO_H
 #define _CPU_INFO_H
 
+static unsigned int num_siblings_per_core(void)
+{
+	unsigned int siblings = ((cpuid_ebx(0x8000001E) >> 8) & 0xFF) + 1;
+#if DEBUG
+	{
+		pr_alert("%s: %u\n", __FUNCTION__, siblings);
+	}
+#endif
+	return siblings;
+}
+
+static unsigned int get_core_cpu_count(void)
+{
+	/*
+	 * Energy counter register is accessed at core level.
+	 * Hence, filterout the siblings.
+	 */
+	return num_present_cpus() / num_siblings_per_core();
+}
+
+static unsigned int get_socket_count(void)
+{
+	struct cpuinfo_x86 *info = &boot_cpu_data;
+
+	/*
+	 * c->x86_max_cores is the linux count of physical cores
+	 * total physical cores / core per socket gives total number of sockets.
+	 */
+	return get_core_cpu_count() / info->x86_max_cores;
+}
+
 typedef struct cpuid_leaf
 {
 	uint32_t a, b, c, d;

@@ -34,10 +34,9 @@
 #include <trace/events/sched.h>
 
 /* Declare CREATE_CUSTOM_TRACE_EVENTS before including custom header */
-#define CREATE_CUSTOM_TRACE_EVENTS
+// #define CREATE_CUSTOM_TRACE_EVENTS
 
-#include "trace_custom_sched.h"
-
+// #include "trace_custom_sched.h"
 
 // #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 #define pr_fmt(fmt) /* KBUILD_MODNAME */ "%s(): " fmt, __func__
@@ -74,7 +73,7 @@ MODULE_VERSION(DRIVER_MODULE_VERSION);
 static char *name = NULL;
 static int pid = -1;
 static int cpu = -1;
-static int mode = 0;
+static int mode = -1;
 
 module_param(name, charp, 0000);
 module_param(pid, int, 0000);
@@ -85,26 +84,6 @@ MODULE_PARM_DESC(name, "[name] is the process name to attach to.");
 MODULE_PARM_DESC(pid, "[pid] is the PID to to attach to.");
 MODULE_PARM_DESC(cpu, "[cpu] is the target CPU for energy measurement.");
 MODULE_PARM_DESC(mode, "[mode] is the backend mode for energy data source. [0]- MSR, [1]- perf");
-
-
-/*
- * As the trace events are not exported to modules, the use of
- * for_each_kernel_tracepoint() is needed to find the trace event
- * to attach to. The fct() function below, is a callback that
- * will be called for every event.
- *
- * Helper functions are created by the TRACE_CUSTOM_EVENT() macro
- * update the event. Those are of the form:
- *
- *    trace_custom_event_<event>_update()
- *
- * Where <event> is the event to attach.
- */
-static void fct(struct tracepoint *tp, void *priv)
-{
-	// trace_custom_event_sched_switch_update(tp);
-	// trace_custom_event_sched_waking_update(tp);
-}
 
 static void set_energy_unit(energy_t *data)
 {
@@ -200,7 +179,7 @@ static void add_delta_core(energy_t *data, int channel, int cpu, long *val)
 
 static void handle_ctr_overflow(energy_t *data, int channel, u64 value)
 {
-	struct energy_accumulator *accum = &data->accums[channel];
+	energy_accum_t *accum = &data->accums[channel];
 	if (value >= accum->prev_value)
 	{
 		accum->energy_ctr += value - accum->prev_value;
@@ -267,56 +246,53 @@ static unsigned int find_sw_thread_num(unsigned int cpu)
 
 static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
-	pr_alert("\n");
 	energy_t *data = dev_get_drvdata(dev);
 	unsigned int cpu;
 
-	if (channel >= data->nr_cpus)
+	cpu = channel;
+	if (!cpu_online(cpu))
 	{
-		cpu = cpumask_first_and(cpu_online_mask, cpumask_of_node(channel - data->nr_cpus));
-		add_delta_pkg(data, channel, cpu, val);
+		return -ENODEV;
 	}
-	else
-	{
-		cpu = channel;
-		if (!cpu_online(cpu))
-		{
-			return -ENODEV;
-		}
 
-		cpu = find_sw_thread_num(cpu);
-		struct perf_event *event = data->events[cpu];
-		print_perf_cpu(event);
+	struct perf_event *event = data->events[channel];
 
-		u64 value, enabled, running;
+	u64 value, enabled, running;
 
-		rcu_read_lock();
-		value = perf_event_read_value(event, &enabled, &running);
-		rcu_read_unlock();
+	rcu_read_lock();
+	value = perf_event_read_value(event, &enabled, &running);
+	rcu_read_unlock();
 
-		mutex_lock(&data->lock);
-		*val = value;
-		mutex_unlock(&data->lock);
+	pr_alert("%s(): CPU: %d, cpu: %d, value: %ld, enabled: %ld, running: %ld\n", __FUNCTION__, channel, event->cpu, value, enabled, running);
+	mutex_lock(&data->lock);
+	*val = value;
+	mutex_unlock(&data->lock);
 
-		// add_delta_core(data, channel, cpu, val);
-	}
+	// 	add_delta_core(data, channel, cpu, val);
 
 	return 0;
 }
 
 static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
-	pr_alert("\n");
 	energy_t *data = dev_get_drvdata(dev);
 	int cpu;
 
 	if (channel >= data->nr_cpus)
 	{
+#if DEBUG
+		pr_alert("%s(): SOCKET: %d\n", __FUNCTION__, channel);
+#endif
+
 		cpu = cpumask_first_and(cpu_online_mask, cpumask_of_node(channel - data->nr_cpus));
 		add_delta_pkg(data, channel, cpu, val);
 	}
 	else
 	{
+#if DEBUG
+		pr_alert("%s(): CPU: %d\n", __FUNCTION__, channel);
+#endif
+
 		cpu = channel;
 		if (!cpu_online(cpu))
 		{
@@ -324,7 +300,6 @@ static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u3
 		}
 		add_delta_core(data, channel, cpu, val);
 	}
-
 	return 0;
 }
 
@@ -367,54 +342,28 @@ static int energy_accumulator(void *p)
 	return 0;
 }
 
-static int num_siblings_per_core(void)
-{
-	return ((cpuid_ebx(0x8000001E) >> 8) & 0xFF) + 1;
-}
-
-static unsigned int get_core_cpu_count(void)
-{
-	/*
-	 * Energy counter register is accessed at core level.
-	 * Hence, filterout the siblings.
-	 */
-	return num_present_cpus() / num_siblings_per_core();
-}
-
-static unsigned int get_socket_count(void)
-{
-	struct cpuinfo_x86 *info = &boot_cpu_data;
-
-	/*
-	 * c->x86_max_cores is the linux count of physical cores
-	 * total physical cores/ core per socket gives total number of sockets.
-	 */
-	return get_core_cpu_count() / info->x86_max_cores;
-}
-
-static unsigned int get_perf_cpu_count(void)
-{
-	// perf enumerates hw threads for SMT/hyper-threading, multiply by 2
-	return get_core_cpu_count() * 2;
-}
-
-static int set_cpu_and_socket(struct device *dev)
+static int alloc_cpu_socket(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);
-	data->nr_cpus = get_core_cpu_count();
 	data->nr_socks = get_socket_count();
-	data->nr_cpus_perf = get_perf_cpu_count();
 	return 0;
 }
 
-static void socket_config_with_hwmon_input_and_label(energy_t *data, unsigned int *socket_config)
+static int alloc_cpu_cores(struct device *dev)
 {
-	int i;
-	for (i = 0; i < data->nr_cpus + data->nr_socks; i++)
+	energy_t *data = dev_get_drvdata(dev);
+	data->nr_cpus = get_core_cpu_count();
+	return 0;
+}
+
+static void set_socket_config_hwmon(energy_t *data, unsigned int *socket_config)
+{
+	int cpu;
+	for (cpu = 0; cpu < data->nr_cpus + data->nr_socks; cpu++)
 	{
-		socket_config[i] = HWMON_E_INPUT | HWMON_E_LABEL;
+		socket_config[cpu] = HWMON_E_INPUT | HWMON_E_LABEL;
 	}
-	socket_config[i] = 0;
+	socket_config[cpu] = 0;
 }
 
 static void set_hwmon_channel_info(energy_t *data, unsigned int *socket_config)
@@ -432,7 +381,7 @@ static int alloc_socket_config(struct device *dev)
 	{
 		return -ENOMEM;
 	}
-	socket_config_with_hwmon_input_and_label(data, socket_config);
+	set_socket_config_hwmon(data, socket_config);
 	set_hwmon_channel_info(data, socket_config);
 
 	return 0;
@@ -441,7 +390,7 @@ static int alloc_socket_config(struct device *dev)
 static int alloc_sensor_accumulator(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);
-	struct energy_accumulator *accums = devm_kcalloc(dev, data->nr_cpus + data->nr_socks, sizeof(struct energy_accumulator), GFP_KERNEL);
+	energy_accum_t *accums = devm_kcalloc(dev, data->nr_cpus + data->nr_socks, sizeof(energy_accum_t), GFP_KERNEL);
 	if (!accums)
 	{
 		return -ENOMEM;
@@ -480,39 +429,16 @@ static int alloc_label_l(struct device *dev)
 	return 0;
 }
 
-static int custom_match_dev(struct device *dev, void *data)
-{
-	/* this function implements the comaparison logic. Return not zero if device
-	   pointed by dev is the device you are searching for.
-	 */
-
-	pr_info("init_name: %s\n", dev->init_name);
-	return 0;
-}
-
-static struct device *find_device(void)
-{
-	struct device *parent = bus_find_device_by_name(&platform_bus_type, NULL, DRIVER_NAME);
-	if (parent)
-	{
-		struct device *dev = device_find_child(parent, NULL, /* passed in the second param to custom_match_dev */ custom_match_dev);
-		if (dev)
-		{
-			pr_info("DEVICE FOUND\n!");
-			return dev;
-		}
-		put_device(dev);
-	}
-	pr_info("DEVICE NOT FOUND\n!");
-	return NULL;
-}
-
 static int init_perf_backend(struct device *dev)
 {
 	int ret = 0;
-
 	if (mode == 1)
 	{
+		ret |= perf_alloc_cpu_cores(dev);
+		ret |= perf_alloc_socket_config(dev);
+		ret |= perf_alloc_sensor_accumulator(dev);
+		ret |= perf_alloc_label_l(dev);
+
 		ret |= alloc_perf_event_attrs(dev);
 		ret |= alloc_perf_event_kernel_counters(dev);
 		ret |= enable_perf_events(dev);
@@ -520,14 +446,26 @@ static int init_perf_backend(struct device *dev)
 	return ret;
 }
 
-static int create_energy_sensor(struct device *dev)
+static int init_msr_backend(struct device *dev)
 {
 	int ret = 0;
-	ret |= set_cpu_and_socket(dev);
-	ret |= alloc_socket_config(dev);
-	ret |= alloc_sensor_accumulator(dev);
-	ret |= alloc_label_l(dev);
 
+	if (mode == 0)
+	{
+		ret |= alloc_cpu_cores(dev);
+		ret |= alloc_socket_config(dev);
+		ret |= alloc_sensor_accumulator(dev);
+		ret |= alloc_label_l(dev);
+	}
+	return ret;
+}
+
+static int alloc_energy_sensor(struct device *dev)
+{
+	int ret = 0;
+
+	ret |= alloc_cpu_socket(dev);
+	ret |= init_msr_backend(dev);
 	ret |= init_perf_backend(dev);
 
 	return ret;
@@ -549,7 +487,7 @@ static void set_hwmon_chip_info(energy_t *data)
 	}
 	else
 	{
-		pr_alert("[mode] using perf kernel mode.\n");
+		pr_alert("[mode]: using perf kernel mode.\n");
 		data->chip.ops = &energy_ops_perf;
 	}
 	data->chip.info = data->info;
@@ -561,13 +499,6 @@ static void set_hwmon_chip_info(energy_t *data)
 static energy_t *alloc_energy_data(struct device *dev)
 {
 	energy_t *data = devm_kzalloc(dev, sizeof(energy_t), GFP_KERNEL);
-	if (!data)
-	{
-		return NULL;
-	}
-	set_hwmon_chip_info(data);
-	dev_set_drvdata(dev, data);
-
 	return data;
 }
 
@@ -605,8 +536,10 @@ static int energy_probe(struct platform_device *pd)
 	{
 		return -ENOMEM;
 	}
+	set_hwmon_chip_info(data);
+	dev_set_drvdata(dev, data);
 
-	int ret = create_energy_sensor(dev);
+	int ret = alloc_energy_sensor(dev);
 	if (ret)
 	{
 		return ret;
@@ -647,6 +580,7 @@ static int release_perf_counters(struct device *dev)
 	}
 	return ret;
 }
+
 static int energy_remove(struct platform_device *pd)
 {
 	int ret = 0;
@@ -702,6 +636,46 @@ struct ftrace_hook fh = HOOK("schedule", &real_schedule, fh_schedule);
 
 static int __init energy_init(void)
 {
+	// struct perf_event *event0 = perf_event_create_kernel_counter(&energy_attr0, 6, NULL, perf_overflow_handler, NULL);
+	// struct perf_event *event1 = perf_event_create_kernel_counter(&energy_attr1, 9, NULL, perf_overflow_handler, NULL);
+	// u64 value0, enabled0, running0;
+	// u64 value1, enabled1, running1;
+
+	// perf_event_enable(event0);
+	// perf_event_enable(event1);
+
+	// pr_alert("pmu0: %s\n", event0->pmu->name);
+	// pr_alert("pmu1: %s\n", event1->pmu->name);
+
+	// pr_alert("sleeping 1st...\n");
+	// msleep(2000);
+
+	// rcu_read_lock();
+	// value0 = perf_event_read_value(event0, &enabled0, &running0);
+	// rcu_read_unlock();
+
+	// rcu_read_lock();
+	// value1 = perf_event_read_value(event1, &enabled1, &running1);
+	// rcu_read_unlock();
+
+	// pr_alert("cpu: %d value0: %lu\n", event0->cpu, value0);
+	// pr_alert("cpu: %d value1: %lu\n", event1->cpu, value1);
+
+	// pr_alert("sleeping again zzz...\n");
+	// msleep(2000);
+
+	// value0 = perf_event_read_value(event0, &enabled0, &running0);
+	// value1 = perf_event_read_value(event1, &enabled1, &running1);
+
+	// pr_alert("cpu: %d value0: %lu\n", event0->cpu, value0);
+	// pr_alert("cpu: %d value1: %lu\n", event1->cpu, value1);
+
+	// perf_event_disable(event0);
+	// perf_event_disable(event1);
+
+	// perf_event_release_kernel(event0);
+	// perf_event_release_kernel(event1);
+
 	int ret;
 
 	dump_cpu_info();
@@ -744,8 +718,6 @@ static int __init energy_init(void)
 	// setup_ftrace_filter();
 	// register_ftrace_function(&ops);
 	// fh_install_hook(&fh);
-
-	
 
 	pr_alert("energy module loaded!\n");
 	return ret;

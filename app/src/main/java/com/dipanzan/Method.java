@@ -23,7 +23,8 @@ public class Method {
     }
 
     private static void printEnergyConsumed(int core, long before, long after) {
-        double result = (after - before) / Math.pow(10, 6);
+//        double result = (after - before) / Math.pow(10, 6);
+        double result = (after - before) * 2.3283064365386962890625e-10;
         System.out.println("=============================================");
         System.out.println("Core: " + core + " energy consumed: " + result + "J");
         System.out.println("=============================================");

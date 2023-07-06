@@ -9,8 +9,12 @@ public class Matrix {
 
     Scanner in = new Scanner(System.in);
 
+    public Matrix(int size) {
+        SIZE = size;
+    }
+
     public void run() {
-        initSize();
+//        initSize();
         int[][] a = new int[SIZE][SIZE];
         int[][] b = new int[SIZE][SIZE];
 
@@ -68,6 +72,7 @@ public class Matrix {
             }
         }
         System.out.println("Matrix initialization done.");
+        System.out.println("Thanks Man ;)");
     }
 
     private int random(int max, int min) {

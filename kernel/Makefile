@@ -11,12 +11,12 @@ MODULE_NAME=energy
 CC:=x86_64-linux-gnu-gcc
 CFLAGS_energy.o:=-I$(src)
 
-mode:=0
+mode:=-1
 pid:=-1
 
 default:
 	export CONFIG_SENSOR_AMD_ENERGY=m;	\
-	$(MAKE) CC=$(CC) -C $(CFLAGS) $(KDIR) M=$$PWD modules
+	$(MAKE) CC=$(CC) -C $(KDIR) M=$$PWD modules
 
 modules: default
 

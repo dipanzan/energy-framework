@@ -10,13 +10,14 @@ public class DemoApp {
         System.out.println(pid);
 
         Scanner sc = new Scanner(System.in);
-        System.out.print("Application Proceed: ");
-        sc.nextLine();
+//        System.out.print("Application Proceed: ");
+//        sc.nextLine();
 
 //        Method.execute(() -> new Matrix().run());
 
-        int numThreads = Integer.parseInt(args[0]);
-        Method.execute(() -> new Matrix().run());
+        int core = Integer.parseInt(args[0]);
+        int size = Integer.parseInt(args[1]);
+        Method.execute(core, () -> new Matrix(size));
 
     }
 
