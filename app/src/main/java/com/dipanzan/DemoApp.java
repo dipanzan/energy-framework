@@ -17,7 +17,7 @@ public class DemoApp {
 
         int core = Integer.parseInt(args[0]);
         int size = Integer.parseInt(args[1]);
-        Method.execute(core, () -> new Matrix(size).run());
+        Method.execute(core, () -> new Matrix(size).run2());
 
     }
 

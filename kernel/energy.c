@@ -255,7 +255,8 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 		return -ENODEV;
 	}
 
-	struct perf_event *event = data->events[channel];
+	// struct perf_event *event = data->events[channel];
+	struct perf_event *event = data->perf[channel].event;
 
 	u64 value, enabled, running;
 
@@ -429,6 +430,20 @@ static int alloc_label_l(struct device *dev)
 	return 0;
 }
 
+static unsigned int init_cpu_cores(void)
+{
+	unsigned int cores = 0;
+	if (mode == 1)
+	{
+		cores = get_perf_cpu_count();
+	}
+	else
+	{
+		cores = get_core_cpu_count();
+	}
+	return cores;
+}
+
 static int init_perf_backend(struct device *dev)
 {
 	int ret = 0;
@@ -476,8 +491,7 @@ static const struct x86_cpu_id amd_ryzen_cpu_ids_with_64bit_rapl_counters[] = {
 	X86_MATCH_VENDOR_FAM_MODEL(AMD, 0x19, 0x01, NULL),
 	X86_MATCH_VENDOR_FAM_MODEL(AMD, 0x19, 0x30, NULL),
 	X86_MATCH_VENDOR_FAM_MODEL(AMD, 0x19, 0x50, NULL), // bit32? double-check please
-	{}
-};
+	{}};
 
 static void set_hwmon_chip_info(energy_t *data)
 {
@@ -499,7 +513,21 @@ static void set_hwmon_chip_info(energy_t *data)
 
 static energy_t *alloc_energy_data(struct device *dev)
 {
+	
 	energy_t *data = devm_kzalloc(dev, sizeof(energy_t), GFP_KERNEL);
+	if (!data)
+	{
+		return NULL;
+	}
+
+	unsigned int cores = init_cpu_cores();
+	perf_t *perf = devm_kcalloc(dev, cores, sizeof(perf_t), GFP_KERNEL);
+	if (!perf)
+	{
+		return NULL;
+	}
+	
+	data->perf = perf;
 	return data;
 }
 
@@ -532,6 +560,7 @@ static struct task_struct *start_energy_thread(struct device *hwmon_dev, energy_
 static int energy_probe(struct platform_device *pd)
 {
 	struct device *dev = &pd->dev;
+
 	energy_t *data = alloc_energy_data(dev);
 	if (!data)
 	{

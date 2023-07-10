@@ -92,7 +92,8 @@ static int alloc_perf_event_attrs(struct device *dev)
 			return -ENOMEM;
 		}
 		config_perf_event_energy_attr(attr);
-		data->attrs[cpu] = attr;
+		// data->attrs[cpu] = attr;
+		data->perf[cpu].attr = attr;
 	}
 	return 0;
 }
@@ -117,7 +118,8 @@ static int alloc_perf_event_kernel_counters(struct device *dev)
 
 	for (int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
 	{
-		struct perf_event_attr *attr = data->attrs[cpu];
+		// struct perf_event_attr *attr = data->attrs[cpu];
+		struct perf_event_attr *attr = data->perf[cpu].attr;
 		struct perf_event *event = perf_event_create_kernel_counter(attr, cpu, NULL, perf_overflow_handler, NULL);
 		
 		if (IS_ERR(event))
@@ -126,7 +128,8 @@ static int alloc_perf_event_kernel_counters(struct device *dev)
 			return PTR_ERR(event);
 		}
 		print_perf_cpu(event);
-		data->events[cpu] = event;
+		// data->events[cpu] = event;
+		data->perf[cpu].event = event;
 	}
 	return 0;
 }
@@ -147,7 +150,8 @@ static int enable_perf_events(struct device *dev)
 			pr_alert("perf CPU: %d is NOT online, skipping event enable.\n", cpu);
 			continue;
 		}
-		struct perf_event *event = data->events[cpu];
+		// struct perf_event *event = data->events[cpu];
+		struct perf_event *event = data->perf[cpu].event;
 		perf_event_enable(event);
 
 #if DEBUG
@@ -168,7 +172,8 @@ static int disable_perf_events(struct device *dev)
 			pr_alert("perf CPU: %d is NOT online, skipping event disable.\n", cpu);
 			continue;
 		}
-		struct perf_event *event = data->events[cpu];
+		// struct perf_event *event = data->events[cpu];
+		struct perf_event *event = data->perf[cpu].event;
 		perf_event_disable(event);
 
 #if DEBUG
@@ -184,7 +189,8 @@ static int release_perf_event_kernel_counters(struct device *dev)
 	energy_t *data = dev_get_drvdata(dev);
 	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
 	{
-		struct perf_event *event = data->events[cpu];
+		// struct perf_event *event = data->events[cpu];
+		struct perf_event *event = data->perf[cpu].event;
 		ret |= perf_event_release_kernel(event);
 	}
 	return ret;

@@ -44,14 +44,16 @@ typedef struct energy_data
     bool do_not_accum;
 
     /* perf kernel event data */
-    struct perf_event_attr *attrs[NR_CPUS_PERF];
+    // struct perf_event_attr *attrs[NR_CPUS_PERF];
 
     /*
         do not move events elsewhere, needs to be
         at the last position due to unknown array size
         size is nr_cpus.
      */
-    struct perf_event *events[NR_CPUS_PERF];
+    // struct perf_event *events[NR_CPUS_PERF];
+
+    perf_t *perf;
 
 } energy_t;
 

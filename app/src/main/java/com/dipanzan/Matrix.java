@@ -13,6 +13,12 @@ public class Matrix {
         SIZE = size;
     }
 
+    public void run2() {
+        for (int i = 0; i < SIZE; i++) {
+            System.out.print("");
+        }
+    }
+
     public void run() {
 //        initSize();
         int[][] a = new int[SIZE][SIZE];
