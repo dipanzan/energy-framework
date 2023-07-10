@@ -31,6 +31,7 @@ public class Method {
     }
 
     private static long readEnergy(int core) {
+        core = core + 1;
         try {
             String read = Files.readString(Paths.get("/sys/class/hwmon/hwmon5/energy" + core + "_input"));
             read = read.substring(0, read.length() - 2);

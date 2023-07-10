@@ -476,7 +476,8 @@ static const struct x86_cpu_id amd_ryzen_cpu_ids_with_64bit_rapl_counters[] = {
 	X86_MATCH_VENDOR_FAM_MODEL(AMD, 0x19, 0x01, NULL),
 	X86_MATCH_VENDOR_FAM_MODEL(AMD, 0x19, 0x30, NULL),
 	X86_MATCH_VENDOR_FAM_MODEL(AMD, 0x19, 0x50, NULL), // bit32? double-check please
-	{}};
+	{}
+};
 
 static void set_hwmon_chip_info(energy_t *data)
 {
@@ -636,46 +637,6 @@ struct ftrace_hook fh = HOOK("schedule", &real_schedule, fh_schedule);
 
 static int __init energy_init(void)
 {
-	// struct perf_event *event0 = perf_event_create_kernel_counter(&energy_attr0, 6, NULL, perf_overflow_handler, NULL);
-	// struct perf_event *event1 = perf_event_create_kernel_counter(&energy_attr1, 9, NULL, perf_overflow_handler, NULL);
-	// u64 value0, enabled0, running0;
-	// u64 value1, enabled1, running1;
-
-	// perf_event_enable(event0);
-	// perf_event_enable(event1);
-
-	// pr_alert("pmu0: %s\n", event0->pmu->name);
-	// pr_alert("pmu1: %s\n", event1->pmu->name);
-
-	// pr_alert("sleeping 1st...\n");
-	// msleep(2000);
-
-	// rcu_read_lock();
-	// value0 = perf_event_read_value(event0, &enabled0, &running0);
-	// rcu_read_unlock();
-
-	// rcu_read_lock();
-	// value1 = perf_event_read_value(event1, &enabled1, &running1);
-	// rcu_read_unlock();
-
-	// pr_alert("cpu: %d value0: %lu\n", event0->cpu, value0);
-	// pr_alert("cpu: %d value1: %lu\n", event1->cpu, value1);
-
-	// pr_alert("sleeping again zzz...\n");
-	// msleep(2000);
-
-	// value0 = perf_event_read_value(event0, &enabled0, &running0);
-	// value1 = perf_event_read_value(event1, &enabled1, &running1);
-
-	// pr_alert("cpu: %d value0: %lu\n", event0->cpu, value0);
-	// pr_alert("cpu: %d value1: %lu\n", event1->cpu, value1);
-
-	// perf_event_disable(event0);
-	// perf_event_disable(event1);
-
-	// perf_event_release_kernel(event0);
-	// perf_event_release_kernel(event1);
-
 	int ret;
 
 	dump_cpu_info();

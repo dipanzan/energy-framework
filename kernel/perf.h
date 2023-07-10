@@ -118,7 +118,6 @@ static int alloc_perf_event_kernel_counters(struct device *dev)
 	for (int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
 	{
 		struct perf_event_attr *attr = data->attrs[cpu];
-		pr_alert("foorloop cpu: %d\n", cpu);
 		struct perf_event *event = perf_event_create_kernel_counter(attr, cpu, NULL, perf_overflow_handler, NULL);
 		
 		if (IS_ERR(event))
@@ -176,7 +175,6 @@ static int disable_perf_events(struct device *dev)
 		print_perf_event_state(event);
 #endif
 	}
-
 	return 0;
 }
 

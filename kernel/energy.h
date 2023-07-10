@@ -1,7 +1,7 @@
 #ifndef _ENERGY_H
 #define _ENERGY_H
 
-#define DEBUG 1
+#define DEBUG 0
 #define ENERGY_TYPE 12
 #define ENERGY_CONFIG 0x02
 #define SCALE 2.3283064365386962890625e-10

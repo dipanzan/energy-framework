@@ -35,6 +35,8 @@ struct ftrace_hook
 static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *ops, struct ftrace_regs *regs)
 {
     struct ftrace_hook *hook = container_of(ops, struct ftrace_hook, ops);
+    // do not trace if function got invoked from the module itself
+    // can happen with global functions like schedule()
     if (!within_module(parent_ip, THIS_MODULE))
     {
         regs->regs.ip = (unsigned long)hook->function;
