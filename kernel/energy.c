@@ -248,17 +248,18 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 {
 	rcu_read_lock();
 	struct task_struct *p = current;
-	pr_alert("thread_info CPU: %d\n", p->thread_info.cpu);
-	pr_alert("comm: %s\n", p->comm);
-	pr_alert("pid: %d\n", p->pid);
+
+	__preempt_notifier_register(p);
+
+	pr_alert("pid: %d, comm: %s, thread_info CPU: %d\n", p->pid, p->comm, p->thread_info.cpu);
 
 	lock_process_on_cpu(p->pid, p->thread_info.cpu);
 
 	// __preempt_notifier_register(&p_notifier, p);
 
-
+	__preempt_notifier_unregister(p);
 	rcu_read_unlock();
-	
+
 	energy_t *data = dev_get_drvdata(dev);
 	unsigned int cpu;
 
@@ -526,7 +527,7 @@ static void set_hwmon_chip_info(energy_t *data)
 
 static energy_t *alloc_energy_data(struct device *dev)
 {
-	
+
 	energy_t *data = devm_kzalloc(dev, sizeof(energy_t), GFP_KERNEL);
 	if (!data)
 	{
@@ -539,7 +540,7 @@ static energy_t *alloc_energy_data(struct device *dev)
 	{
 		return NULL;
 	}
-	
+
 	data->perf = perf;
 	return data;
 }
@@ -719,6 +720,7 @@ static int __init energy_init(void)
 
 	init_kprobe();
 	lookup_sched_functions();
+	init_preempt_notifier();
 	// fh_install_hook(&fh);
 	// print_sched_functions();
 	// setup_ftrace_filter();
@@ -735,6 +737,7 @@ static void __exit energy_exit(void)
 
 	// unregister_ftrace_function(&f_ops);
 	// fh_remove_hook(&fh);
+	release_preempt_notifier();
 	release_kprobe();
 	// __preempt_notifier_unregister(&p_notifier);
 	// preempt_notifier_unregister(&p_notifier);
