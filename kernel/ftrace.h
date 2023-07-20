@@ -1,25 +1,33 @@
 #ifndef _FTRACE_H
 #define _FTRACE_H
 
-static asmlinkage void (*real_schedule)(void);
+static void (*__fire_sched_in_preempt_notifiers_real)(struct task_struct *curr);
 
-static asmlinkage void fh_schedule(void)
+static void __fire_sched_in_preempt_notifiers_fh(struct task_struct *curr)
+{
+    pr_alert("YAAAY\n");
+    __fire_sched_in_preempt_notifiers_real(curr);
+}
+
+
+
+static asmlinkage void (*schedule_real)(void);
+
+static asmlinkage void schedule_fh(void)
 {
     pr_alert("schedule-in\n");
-    real_schedule();
+    schedule_real();
     pr_alert("schedule-out\n");
 }
 
 /* https://www.apriorit.com/dev-blog/546-hooking-linux-funhttps://www.apriorit.com/dev-blog/546-hooking-linux-functions-2-actions-2 */
 
-#define SCHEDULE_FUNC "schedule"
-
-#define HOOK(_name, _original, _function) \
-    {                                     \
-        .name = (_name),                  \
-        .original = (_original),          \
+#define HOOK(_name, _original, _function)    \
+    {                                        \
+        .name = (_name),                     \
+        .original = (_original),             \
         .function = (_function),          \ 
-        .ops = {0},                       \
+     \
     }
 
 struct ftrace_hook
@@ -132,7 +140,10 @@ static asmlinkage long fh_sys_execve(const char __user *filename,
 
 static void notrace ftrace_callback(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *op, struct ftrace_regs *regs)
 {
-    // pr_alert("%s() called\n", SCHEDULE_FUNC);
+    if (!within_module(parent_ip, THIS_MODULE))
+    {
+        pr_alert("%s() called\n", "__fire_sched_in_preempt_notifiers");
+    }
     // pr_alert("ip: %p, parent_ip: %p\n", ip, parent_ip);
 }
 
@@ -145,7 +156,7 @@ struct ftrace_ops f_ops = {
 // ftrace_set_filter() MUST be called before registering ftrace ops!
 static void setup_ftrace_filter(void)
 {
-    ftrace_set_filter(&f_ops, SCHEDULE_FUNC, strlen(SCHEDULE_FUNC), 0);
+    ftrace_set_filter(&f_ops, "__fire_sched_in_preempt_notifiers", strlen("__fire_sched_in_preempt_notifiers"), 0);
 }
 
 #endif /* _FTRACE_H */

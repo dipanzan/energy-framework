@@ -6,6 +6,7 @@
 #define SCHED_SETNUMA "sched_setnuma"
 #define MIGRATE_TASK_TO "migrate_task_to"
 #define MIGRATE_SWAP "migrate_swap"
+#define SCHED_SETAFFINITY "sched_setaffinity"
 
 // ftrace functions
 #define SET_FTRACE_FILTER "set_ftrace_filter"
@@ -15,6 +16,8 @@
 void (*sched_setnuma_func)(struct task_struct *p, int node);
 int (*migrate_task_to_func)(struct task_struct *p, int cpu);
 int (*migrate_swap_func)(struct task_struct *, struct task_struct *);
+long (*sched_setaffinity_func)(pid_t pid, const struct cpumask *in_mask);
+
 
 int (*set_ftrace_filter_func)(char *str);
 bool (*trace_ignore_this_task_func)(struct trace_pid_list *filtered_pids, struct trace_pid_list *filtered_no_pids, struct task_struct *task);
@@ -24,6 +27,7 @@ static void lookup_sched_functions(void)
     sched_setnuma_func = (void *)kallsyms_lookup_name_func(SCHED_SETNUMA);
     migrate_task_to_func = (void *)kallsyms_lookup_name_func(MIGRATE_TASK_TO);
     migrate_swap_func = (void *)kallsyms_lookup_name_func(MIGRATE_SWAP);
+    sched_setaffinity_func = (void *)kallsyms_lookup_name_func(SCHED_SETAFFINITY);
 }
 
 static void print_sched_functions(void)

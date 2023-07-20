@@ -246,6 +246,19 @@ static unsigned int find_sw_thread_num(unsigned int cpu)
 
 static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
+	rcu_read_lock();
+	struct task_struct *p = current;
+	pr_alert("thread_info CPU: %d\n", p->thread_info.cpu);
+	pr_alert("comm: %s\n", p->comm);
+	pr_alert("pid: %d\n", p->pid);
+
+	lock_process_on_cpu(p->pid, p->thread_info.cpu);
+
+	// __preempt_notifier_register(&p_notifier, p);
+
+
+	rcu_read_unlock();
+	
 	energy_t *data = dev_get_drvdata(dev);
 	unsigned int cpu;
 
@@ -353,7 +366,7 @@ static int alloc_cpu_socket(struct device *dev)
 static int alloc_cpu_cores(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);
-	data->nr_cpus = get_core_cpu_count();
+	data->nr_cpus = get_core_cpu_count() * 2;
 	return 0;
 }
 
@@ -662,7 +675,9 @@ MODULE_DEVICE_TABLE(x86cpu, amd_ryzen_cpu_ids);
 
 // name, real, modified
 // struct ftrace_hook fh = HOOK("__x64_sys_execveat", fh_sys_execve, &real_sys_execve);
-struct ftrace_hook fh = HOOK("schedule", &real_schedule, fh_schedule);
+// struct ftrace_hook fh = HOOK("schedule", &real_schedule, fh_schedule);
+
+struct ftrace_hook fh = HOOK("__fire_sched_in_preempt_notifiers", &__fire_sched_in_preempt_notifiers_real, __fire_sched_in_preempt_notifiers_fh);
 
 static int __init energy_init(void)
 {
@@ -702,12 +717,12 @@ static int __init energy_init(void)
 	// __preempt_notifier_register(&p_notifier, p);
 	// preempt_notifier_register(&p_notifier);
 
-	// init_kprobe();
-	// lookup_sched_functions();
+	init_kprobe();
+	lookup_sched_functions();
+	// fh_install_hook(&fh);
 	// print_sched_functions();
 	// setup_ftrace_filter();
-	// register_ftrace_function(&ops);
-	// fh_install_hook(&fh);
+	// register_ftrace_function(&f_ops);
 
 	pr_alert("energy module loaded!\n");
 	return ret;
@@ -718,12 +733,9 @@ static void __exit energy_exit(void)
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
 
-	// unregister_ftrace_function(&ops);
-
+	// unregister_ftrace_function(&f_ops);
 	// fh_remove_hook(&fh);
-
-	// release_kprobe();
-
+	release_kprobe();
 	// __preempt_notifier_unregister(&p_notifier);
 	// preempt_notifier_unregister(&p_notifier);
 

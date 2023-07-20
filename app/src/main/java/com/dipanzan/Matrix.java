@@ -14,9 +14,10 @@ public class Matrix {
     }
 
     public void run2() {
-        for (int i = 0; i < SIZE; i++) {
-            System.out.print("");
+        for (long i = 0; i < SIZE; i++) {
+            System.out.print("hello");
         }
+        System.out.println("");
     }
 
     public void run() {
@@ -27,7 +28,7 @@ public class Matrix {
         initMatrix(a, MAX, MIN);
         initMatrix(b, MAX, MIN);
 
-        int[][] c = matrixMultiply(a, b);
+        long[][] c = matrixMultiply(a, b);
 //        printMatrix(c);
 //        do {
 //        } while (runAgain());
@@ -53,9 +54,9 @@ public class Matrix {
         }
     }
 
-    private int[][] matrixMultiply(int[][] a, int[][] b) {
+    private long[][] matrixMultiply(int[][] a, int[][] b) {
         System.out.println("Multiplying matrix.");
-        int[][] c = new int[SIZE][SIZE];
+        long[][] c = new long[SIZE][SIZE];
 
         for (int i = 0; i < SIZE; i++) {
             for (int j = 0; j < SIZE; j++) {
