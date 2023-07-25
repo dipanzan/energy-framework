@@ -12,7 +12,12 @@ public class Method {
     }
 
     public static void execute(Execute e) {
+        long before = readEnergy(0);
         e.execute();
+        long after = readEnergy(0);
+
+        printEnergyConsumed(0, before, after);
+
     }
 
     public static void execute(int core, Execute e) {

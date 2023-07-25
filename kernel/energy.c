@@ -244,19 +244,17 @@ static unsigned int find_sw_thread_num(unsigned int cpu)
 	return cpu * 2;
 }
 
+// HELLO MARKER
+
 static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
 	rcu_read_lock();
 	struct task_struct *p = current;
-
+	lock_process_on_cpu(p->pid, p->thread_info.cpu);
 	__preempt_notifier_register(p);
-
 	pr_alert("pid: %d, comm: %s, thread_info CPU: %d\n", p->pid, p->comm, p->thread_info.cpu);
 
-	lock_process_on_cpu(p->pid, p->thread_info.cpu);
-
-	// __preempt_notifier_register(&p_notifier, p);
-
+	// find_threads(p);
 	__preempt_notifier_unregister(p);
 	rcu_read_unlock();
 
@@ -269,7 +267,6 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 		return -ENODEV;
 	}
 
-	// struct perf_event *event = data->events[channel];
 	struct perf_event *event = data->perf[channel].event;
 
 	u64 value, enabled, running;
@@ -668,17 +665,7 @@ static const struct x86_cpu_id amd_ryzen_cpu_ids[] __initconst = {
 
 MODULE_DEVICE_TABLE(x86cpu, amd_ryzen_cpu_ids);
 
-// careful: 2nd: hooked fn, 3rd: actual fn pointer to pointer!!
-// static struct ftrace_hook hooked_functions[] = {
-//     HOOK("sys_clone", fh_sys_clone, &real_sys_clone),
-//     HOOK("__x64_sys_execveat", fh_sys_execve, &real_sys_execve),
-// };
-
-// name, real, modified
-// struct ftrace_hook fh = HOOK("__x64_sys_execveat", fh_sys_execve, &real_sys_execve);
-// struct ftrace_hook fh = HOOK("schedule", &real_schedule, fh_schedule);
-
-struct ftrace_hook fh = HOOK("__fire_sched_in_preempt_notifiers", &__fire_sched_in_preempt_notifiers_real, __fire_sched_in_preempt_notifiers_fh);
+struct ftrace_hook fh = HOOK("user_mode_thread", &user_mode_thread_real, user_mode_thread_fh);
 
 static int __init energy_init(void)
 {
@@ -712,21 +699,23 @@ static int __init energy_init(void)
 		return ret;
 	}
 
-	// dump_process_info(pid);
+	ret = init_kprobe();
+	if (ret)
+	{
+		release_kprobe();
+		return ret;
+	}
 
-	// struct task_struct *p = get_process(pid);
-	// __preempt_notifier_register(&p_notifier, p);
-	// preempt_notifier_register(&p_notifier);
-
-	init_kprobe();
-	lookup_sched_functions();
-	init_preempt_notifier();
+	lookup_functions();
+	ret = init_preempt_notifier(cpu_energy_pd);
 	// fh_install_hook(&fh);
-	// print_sched_functions();
-	// setup_ftrace_filter();
-	// register_ftrace_function(&f_ops);
+	// print_available_functions();
+	setup_ftrace_filter();
+	int ftrace = register_ftrace_function(&f_ops);
+	pr_alert("%s(): ret: %d\n", "register_ftrace_function", ftrace);
 
 	pr_alert("energy module loaded!\n");
+	pr_alert("[WARNING]: YOU ARE IN KERNEL MODE - PREEMPTION DISABLED YOU HAVE BEEN WARNED! :)\n");
 	return ret;
 }
 
@@ -735,14 +724,15 @@ static void __exit energy_exit(void)
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
 
-	// unregister_ftrace_function(&f_ops);
 	// fh_remove_hook(&fh);
-	release_preempt_notifier();
+	int ftrace = unregister_ftrace_function(&f_ops);
+	pr_alert("%s(): ret: %d\n", "unregister_ftrace_function", ftrace);
 	release_kprobe();
 	// __preempt_notifier_unregister(&p_notifier);
 	// preempt_notifier_unregister(&p_notifier);
 
 	pr_alert("energy module unloaded\n");
+	pr_alert("[WARNING]: EXITING KERNEL MODE - PREEMPTION ENABLED, SWITCHING TO USER MODE! :)\n");
 }
 
 module_init(energy_init);

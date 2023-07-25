@@ -1,23 +1,47 @@
 package com.dipanzan;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
 public class Matrix {
-    private static int SIZE = 0;
+    private static int NUM_THEADS = 0;
+    private static int TIME = 0;
+    private static int SIZE = 8192;
     private final static int MAX = 10;
     private final static int MIN = 0;
 
     Scanner in = new Scanner(System.in);
 
-    public Matrix(int size) {
-        SIZE = size;
+
+    public Matrix(int threads, int time) {
+        NUM_THEADS = threads;
+        TIME = time;
+    }
+
+    private void load() {
+        System.out.println(Thread.currentThread().getName() + " running");
+        run();
+
     }
 
     public void run2() {
-        for (long i = 0; i < SIZE; i++) {
-            System.out.print("hello");
+        List<Thread> threads = new ArrayList<>(NUM_THEADS);
+        for (int i = 0; i < NUM_THEADS; i++) {
+            threads.add(new Thread(this::load));
         }
-        System.out.println("");
+        threads.forEach(Thread::start);
+
+        for (int i = 0; i < TIME; i++) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                //
+            }
+        }
+        threads.forEach(Thread::stop);
+
     }
 
     public void run() {

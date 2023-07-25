@@ -9,7 +9,14 @@ static void __fire_sched_in_preempt_notifiers_fh(struct task_struct *curr)
     __fire_sched_in_preempt_notifiers_real(curr);
 }
 
+static pid_t (*user_mode_thread_real)(int (*fn)(void *), void *arg, unsigned long flags);
 
+static pid_t user_mode_thread_fh(int (*fn)(void *), void *arg, unsigned long flags)
+{
+    pid_t pid = user_mode_thread_real(fn, arg, flags);
+    pr_alert("%s(): %d\n", __FUNCTION__, pid);
+    return pid;
+}
 
 static asmlinkage void (*schedule_real)(void);
 
@@ -27,7 +34,7 @@ static asmlinkage void schedule_fh(void)
         .name = (_name),                     \
         .original = (_original),             \
         .function = (_function),          \ 
-     \
+      \
     }
 
 struct ftrace_hook
@@ -43,6 +50,8 @@ struct ftrace_hook
 static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *ops, struct ftrace_regs *regs)
 {
     struct ftrace_hook *hook = container_of(ops, struct ftrace_hook, ops);
+    pr_alert("thunk: %s\n", hook->name);
+
     // do not trace if function got invoked from the module itself
     // can happen with global functions like schedule()
     if (!within_module(parent_ip, THIS_MODULE))
@@ -77,6 +86,7 @@ static int fh_install_hook(struct ftrace_hook *hook)
     hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS_IF_SUPPORTED | FTRACE_OPS_FL_IPMODIFY; // TODO: recursion?
 
     err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 1);
+    pr_alert("ftrace_set_filter_ip: %d\n", err);
     if (err)
     {
         pr_alert("ftrace_set_filter_ip() failed: %d\n", err);
@@ -84,6 +94,8 @@ static int fh_install_hook(struct ftrace_hook *hook)
     }
 
     err = register_ftrace_function(&hook->ops);
+    pr_alert("register_ftrace_function: %d\n", err);
+
     if (err)
     {
         pr_alert("register_ftrace_function() failed: %d\n", err);
@@ -138,25 +150,30 @@ static asmlinkage long fh_sys_execve(const char __user *filename,
     return ret;
 }
 
+static char *function_hook = "user_mode_thread";
+
 static void notrace ftrace_callback(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *op, struct ftrace_regs *regs)
 {
+    pr_alert("%s(): ip: %p, parent_ip: %p\n", __FUNCTION__, ip, parent_ip);
+    pr_alert("%s(): %s\n", __FUNCTION__, function_hook, ip, parent_ip);
+
     if (!within_module(parent_ip, THIS_MODULE))
     {
-        pr_alert("%s() called\n", "__fire_sched_in_preempt_notifiers");
+        pr_alert("%s(): %s\n", __FUNCTION__, function_hook, ip, parent_ip);
     }
-    // pr_alert("ip: %p, parent_ip: %p\n", ip, parent_ip);
 }
 
 struct ftrace_ops f_ops = {
     .func = ftrace_callback,
-    .flags = FTRACE_OPS_FL_RECURSION,
+    .flags = FTRACE_OPS_FL_SAVE_REGS_IF_SUPPORTED | FTRACE_OPS_FL_IPMODIFY | FTRACE_OPS_FL_RECURSION,
     .private = NULL,
 };
 
 // ftrace_set_filter() MUST be called before registering ftrace ops!
 static void setup_ftrace_filter(void)
 {
-    ftrace_set_filter(&f_ops, "__fire_sched_in_preempt_notifiers", strlen("__fire_sched_in_preempt_notifiers"), 0);
+    int ret = ftrace_set_filter(&f_ops, function_hook, strlen(function_hook), 0);
+    pr_alert("%s(): ret: %d\n", __FUNCTION__, ret);
 }
 
 #endif /* _FTRACE_H */

@@ -4,6 +4,8 @@
 static void __sched_in(struct preempt_notifier *notifier, int cpu);
 static void __sched_out(struct preempt_notifier *notifier, struct task_struct *next);
 
+struct preempt_notifier *pn;
+
 static const struct preempt_ops p_ops = {
     .sched_in = __sched_in,
     .sched_out = __sched_out};
@@ -17,33 +19,38 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
     sched_setaffinity_func(pid, &mask);
 }
 
+
 static void __sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    pr_alert("preempt: sched_in(): cpu: %d\n", cpu);
+    pr_alert("%s(): current: %s(%d), cpu: %d\n", __FUNCTION__, current->comm, current->pid, cpu); 
 }
 
 static void __sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
-    pr_alert("preempt: sched_out(), next_task: %s\n", next->comm);
+    pr_alert("%s(): current: %s(%d), next: %s(%d)\n", __FUNCTION__, current->comm, current->pid, next->comm, next->pid);
 }
 
-struct preempt_notifier *pn;
+// TODO: Refactor to enum
 int status = 0;
 
-static void init_preempt_notifier(void)
+static int init_preempt_notifier(struct platform_device *pd)
 {
-    pn = kmalloc(sizeof(struct preempt_notifier *), GFP_KERNEL);
+    struct device *dev = &pd->dev;
+    pn = devm_kzalloc(dev, sizeof(struct preempt_notifier), GFP_KERNEL);
+    if (!pn)
+    {
+        pr_alert("%s() failed\n", __FUNCTION__);
+        return -ENOMEM;
+    }
+    // pn = kmalloc(sizeof(struct preempt_notifier *), GFP_KERNEL);
     pn->ops = &p_ops;
-}
 
-static void release_preempt_notifier(void)
-{
-    kfree(pn);
+    return 0;
 }
 
 static void __preempt_notifier_register(struct task_struct *p)
 {
-    // pr_alert("%s() called\n", __FUNCTION__);
+    pr_alert("%s() called\n", __FUNCTION__);
 
     // pr_alert("status: %d\n", status);
     if (status == 1)

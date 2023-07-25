@@ -35,7 +35,11 @@ static void print_threads(struct task_struct *p)
     char comm[TASK_COMM_LEN];
     while_each_thread(p, t)
     {
-        pr_info("tgid:[%d]\tpid:[%d]\tthread:%s\tCPU:%d\n", t->tgid, t->pid, get_task_comm(comm, t), t->thread_info.cpu);
+        pr_info("tgid:[%d]\tpid:[%d]\tthread:%s\tCPU:%d,\tstate:%d\n", 
+            t->tgid, t->pid, 
+            get_task_comm(comm, t), 
+            t->thread_info.cpu,
+            t->__state);
     }
 }
 
@@ -43,7 +47,7 @@ static void dump_process_info(pid_t pid)
 {
     char comm[TASK_COMM_LEN];
 
-    /* Does not need rcu_read_lock/unlock() primitives, it's interally called */
+    /* Does not need rcu_read_lock/unlock() primitives, it's internally called */
     struct pid *found_pid = find_get_pid(pid);
     struct task_struct *p = get_pid_task(found_pid, PIDTYPE_PID);
 

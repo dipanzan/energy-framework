@@ -1,6 +1,8 @@
 #ifndef _PERF_H
 #define _PERF_H
 
+#define LABEL_SIZE 10
+
 #define DEAD "PERF_EVENT_STATE_DEAD [-4]\n"
 #define EXIT "PERF_EVENT_STATE_EXIT [-3]\n"
 #define ERROR "PERF_EVENT_STATE_ERROR [-2]\n"
@@ -99,8 +101,6 @@ static int alloc_perf_event_kernel_counters(struct device *dev)
 			pr_alert("perf_event_create failed on CPU[%d] with error: %ld\n", cpu, PTR_ERR(event));
 			return PTR_ERR(event);
 		}
-		print_perf_cpu(event);
-		// data->events[cpu] = event;
 		data->perf[cpu].event = event;
 	}
 	return 0;
@@ -122,7 +122,6 @@ static int enable_perf_events(struct device *dev)
 			pr_alert("perf CPU: %d is NOT online, skipping event enable.\n", cpu);
 			continue;
 		}
-		// struct perf_event *event = data->events[cpu];
 		struct perf_event *event = data->perf[cpu].event;
 		perf_event_enable(event);
 
@@ -144,7 +143,6 @@ static int disable_perf_events(struct device *dev)
 			pr_alert("perf CPU: %d is NOT online, skipping event disable.\n", cpu);
 			continue;
 		}
-		// struct perf_event *event = data->events[cpu];
 		struct perf_event *event = data->perf[cpu].event;
 		perf_event_disable(event);
 
@@ -161,7 +159,6 @@ static int release_perf_event_kernel_counters(struct device *dev)
 	energy_t *data = dev_get_drvdata(dev);
 	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
 	{
-		// struct perf_event *event = data->events[cpu];
 		struct perf_event *event = data->perf[cpu].event;
 		ret |= perf_event_release_kernel(event);
 	}
@@ -216,20 +213,20 @@ static int perf_alloc_sensor_accumulator(struct device *dev)
 	return 0;
 }
 
-static void perf_set_label_l(energy_t *data, char (*label_l)[10])
+static void perf_set_label_l(energy_t *data, char (*label_l)[LABEL_SIZE])
 {
 	data->label = label_l;
 
 	for (int i = 0; i < data->nr_cpus_perf; i++)
 	{
-		scnprintf(label_l[i], 10, "Pcore%03u", i);
+		scnprintf(label_l[i], LABEL_SIZE, "Pcore%03u", i);
 	}
 }
 
 static int perf_alloc_label_l(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);
-	char(*label_l)[10];
+	char(*label_l)[LABEL_SIZE];
 	label_l = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(*label_l), GFP_KERNEL);
 	if (!label_l)
 	{

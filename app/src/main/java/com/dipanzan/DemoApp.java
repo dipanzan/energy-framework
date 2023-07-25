@@ -9,16 +9,22 @@ public class DemoApp {
         long pid = ProcessHandle.current().pid();
         System.out.println(pid);
 
-        Scanner sc = new Scanner(System.in);
-//        System.out.print("Application Proceed: ");
-//        sc.nextLine();
+        int threads = Integer.parseInt(args[0]);
+        System.out.println(threads);
+        int time = Integer.parseInt((args[1]));
+        System.out.println(time);
+        Method.execute(() -> new Matrix(threads, time).run2());
+    }
 
-//        Method.execute(() -> new Matrix().run());
+    private static void sleep(int n)
+    {
+        try {
+            Thread.sleep(n);
 
-        int core = Integer.parseInt(args[0]);
-        int size = Integer.parseInt(args[1]);
-        Method.execute(core, () -> new Matrix(size).run2());
+        } catch (Exception e)
+        {
 
+        }
     }
 
 

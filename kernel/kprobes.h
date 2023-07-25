@@ -14,28 +14,21 @@ static int init_kallsyms(void)
     kallsyms_lookup_name_func = (void *)kp.addr;
     if (kallsyms_lookup_name_func)
     {
-        pr_alert("%s() init complete.", KALLSYMS_LOOKUP_NAME);
+        pr_info("%s(): init complete.\n", KALLSYMS_LOOKUP_NAME);
         return 0;
     }
     else
     {
-        pr_alert("%s() init failed.", KALLSYMS_LOOKUP_NAME);
-         // TODO: return error number properly
+        pr_alert("%s(): init failed.\n", KALLSYMS_LOOKUP_NAME);
         return -1;
     }
 }
 
 static int init_kprobe(void)
 {
-    int ret;
-    ret = register_kprobe(&kp);
-    if (ret)
-    {
-        return ret;
-    }
-    pr_alert("%s() init complete.", __FUNCTION__);
-
-    ret = init_kallsyms();
+    int ret = 0;
+    ret |= register_kprobe(&kp);
+    ret |= init_kallsyms();
     return ret;
 }
 

@@ -8,8 +8,6 @@
 
 #define NR_CPUS_PERF 16
 
-#define LABEL_SIZE 10
-
 typedef struct energy_accumulator
 {
     u64 energy_ctr;
@@ -40,7 +38,7 @@ typedef struct energy_data
     int nr_socks;
     int nr_cpus_perf;
     int core_id;
-    char (*label)[LABEL_SIZE];
+    char (*label)[10];
     bool do_not_accum;
 
     /* perf kernel event data */
