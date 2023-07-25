@@ -46,7 +46,6 @@ static void config_perf_event_energy_attr(struct perf_event_attr *attr)
 	attr->config = ENERGY_CONFIG,
 	attr->exclude_user = 0,
 	attr->exclude_kernel = 0,
-	// attr->exclusive = 1,
 	attr->pinned = 1,
 	attr->inherit = 1,
 	attr->comm = 1,
@@ -92,7 +91,6 @@ static int alloc_perf_event_kernel_counters(struct device *dev)
 
 	for (int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
 	{
-		// struct perf_event_attr *attr = data->attrs[cpu];
 		struct perf_event_attr *attr = data->perf[cpu].attr;
 		struct perf_event *event = perf_event_create_kernel_counter(attr, cpu, NULL, perf_overflow_handler, NULL);
 
@@ -134,13 +132,12 @@ static int enable_perf_events(struct device *dev)
 
 static int disable_perf_events(struct device *dev)
 {
-	pr_alert("\n");
 	energy_t *data = dev_get_drvdata(dev);
 	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
 	{
 		if (!cpu_online(cpu))
 		{
-			pr_alert("perf CPU: %d is NOT online, skipping event disable.\n", cpu);
+			pr_alert("CPU: %d offline, skipping perf event disable.\n", cpu);
 			continue;
 		}
 		struct perf_event *event = data->perf[cpu].event;

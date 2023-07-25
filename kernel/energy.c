@@ -59,22 +59,6 @@
 
 MODULE_VERSION(DRIVER_MODULE_VERSION);
 
-#define ENERGY_PWR_UNIT_MSR 0xC0010299
-#define ENERGY_CORE_MSR 0xC001029A
-#define ENERGY_PKG_MSR 0xC001029B
-
-#define AMD_ENERGY_UNIT_MASK 0x01F00
-#define AMD_ENERGY_MASK 0xFFFFFFFF
-
-#define ACCUM_CUSTOM_TIMEOUT 1000
-
-#define ENERGY_ACCUM_THREAD "energy_runner"
-
-static char *name = NULL;
-static int pid = -1;
-static int cpu = -1;
-static int mode = -1;
-
 module_param(name, charp, 0000);
 module_param(pid, int, 0000);
 module_param(cpu, int, 0000);
@@ -279,9 +263,7 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	mutex_lock(&data->lock);
 	*val = value;
 	mutex_unlock(&data->lock);
-
-	// 	add_delta_core(data, channel, cpu, val);
-
+	
 	return 0;
 }
 
@@ -706,16 +688,21 @@ static int __init energy_init(void)
 		return ret;
 	}
 
-	lookup_functions();
 	ret = init_preempt_notifier(cpu_energy_pd);
+	if (ret)
+	{
+		return ret;
+	}
+
+
+	lookup_functions();
 	// fh_install_hook(&fh);
-	// print_available_functions();
-	setup_ftrace_filter();
-	int ftrace = register_ftrace_function(&f_ops);
-	pr_alert("%s(): ret: %d\n", "register_ftrace_function", ftrace);
+	// setup_ftrace_filter();
+	// int ftrace = register_ftrace_function(&f_ops);
+	// pr_alert("%s(): ret: %d\n", "register_ftrace_function", ftrace);
 
 	pr_alert("energy module loaded!\n");
-	pr_alert("[WARNING]: YOU ARE IN KERNEL MODE - PREEMPTION DISABLED YOU HAVE BEEN WARNED! :)\n");
+	pr_alert("[WARNING]: YOU ARE IN KERNEL MODE - PREEMPTION DISABLED YOU HAVE BEEN WARNED! :#\n");
 	return ret;
 }
 
@@ -723,14 +710,12 @@ static void __exit energy_exit(void)
 {
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
+	release_kprobe();
 
 	// fh_remove_hook(&fh);
-	int ftrace = unregister_ftrace_function(&f_ops);
-	pr_alert("%s(): ret: %d\n", "unregister_ftrace_function", ftrace);
-	release_kprobe();
-	// __preempt_notifier_unregister(&p_notifier);
-	// preempt_notifier_unregister(&p_notifier);
-
+	// int ftrace = unregister_ftrace_function(&f_ops);
+	// pr_alert("%s(): ret: %d\n", "unregister_ftrace_function", ftrace);
+	
 	pr_alert("energy module unloaded\n");
 	pr_alert("[WARNING]: EXITING KERNEL MODE - PREEMPTION ENABLED, SWITCHING TO USER MODE! :)\n");
 }

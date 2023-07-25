@@ -1,12 +1,28 @@
 #ifndef _ENERGY_H
 #define _ENERGY_H
 
+#define ENERGY_PWR_UNIT_MSR 0xC0010299
+#define ENERGY_CORE_MSR 0xC001029A
+#define ENERGY_PKG_MSR 0xC001029B
+
+#define AMD_ENERGY_UNIT_MASK 0x01F00
+#define AMD_ENERGY_MASK 0xFFFFFFFF
+
+#define ACCUM_CUSTOM_TIMEOUT 1000
+
+#define ENERGY_ACCUM_THREAD "energy_runner"
+
 #define DEBUG 0
 #define ENERGY_TYPE 12
 #define ENERGY_CONFIG 0x02
 #define SCALE 2.3283064365386962890625e-10
 
 #define NR_CPUS_PERF 16
+
+static char *name = NULL;
+static int pid = -1;
+static int cpu = -1;
+static int mode = -1;
 
 typedef struct energy_accumulator
 {

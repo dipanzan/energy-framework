@@ -14,7 +14,6 @@ static int init_kallsyms(void)
     kallsyms_lookup_name_func = (void *)kp.addr;
     if (kallsyms_lookup_name_func)
     {
-        pr_info("%s(): init complete.\n", KALLSYMS_LOOKUP_NAME);
         return 0;
     }
     else
