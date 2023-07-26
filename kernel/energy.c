@@ -234,11 +234,11 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 {
 	rcu_read_lock();
 	struct task_struct *p = current;
-	lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
 	__preempt_notifier_register(p);
 	pr_alert("pid: %d, comm: %s, thread_info CPU: %d\n", p->pid, p->comm, p->thread_info.cpu);
 
-	// find_threads(p);
+	find_threads(p);
 	__preempt_notifier_unregister(p);
 	rcu_read_unlock();
 
@@ -259,11 +259,48 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	value = perf_event_read_value(event, &enabled, &running);
 	rcu_read_unlock();
 
-	pr_alert("%s(): CPU: %d, cpu: %d, value: %ld, enabled: %ld, running: %ld\n", __FUNCTION__, channel, event->cpu, value, enabled, running);
+	// pr_alert("%s(): CPU: %d, cpu: %d, value: %ld, enabled: %ld, running: %ld\n", __FUNCTION__, channel, event->cpu, value, enabled, running);
 	mutex_lock(&data->lock);
 	*val = value;
 	mutex_unlock(&data->lock);
-	
+
+	return 0;
+}
+
+static int read_perf_energy_data2(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
+{
+	rcu_read_lock();
+	struct task_struct *p = current;
+	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	__preempt_notifier_register(p);
+	pr_alert("pid: %d, comm: %s, thread_info CPU: %d\n", p->pid, p->comm, p->thread_info.cpu);
+
+	find_threads(p);
+	__preempt_notifier_unregister(p);
+	rcu_read_unlock();
+
+	energy_t *data = dev_get_drvdata(dev);
+	unsigned int cpu;
+
+	cpu = channel;
+	if (!cpu_online(cpu))
+	{
+		return -ENODEV;
+	}
+
+	struct perf_event *event = data->perf[channel].event;
+
+	u64 value, enabled, running;
+
+	rcu_read_lock();
+	value = perf_event_read_value(event, &enabled, &running);
+	rcu_read_unlock();
+
+	// pr_alert("%s(): CPU: %d, cpu: %d, value: %ld, enabled: %ld, running: %ld\n", __FUNCTION__, channel, event->cpu, value, enabled, running);
+	mutex_lock(&data->lock);
+	*val = value;
+	mutex_unlock(&data->lock);
+
 	return 0;
 }
 
@@ -442,6 +479,7 @@ static int init_perf_backend(struct device *dev)
 	int ret = 0;
 	if (mode == 1)
 	{
+		ret |= perf_alloc(dev);
 		ret |= perf_alloc_cpu_cores(dev);
 		ret |= perf_alloc_socket_config(dev);
 		ret |= perf_alloc_sensor_accumulator(dev);
@@ -504,24 +542,30 @@ static void set_hwmon_chip_info(energy_t *data)
 	data->info[0] = &data->energy_info;
 }
 
-static energy_t *alloc_energy_data(struct device *dev)
+static int alloc_energy_data(struct device *dev)
 {
-
 	energy_t *data = devm_kzalloc(dev, sizeof(energy_t), GFP_KERNEL);
 	if (!data)
 	{
-		return NULL;
+		pr_alert("%s(): failed!\n", __FUNCTION__);
+		return -ENOMEM;
 	}
+	set_hwmon_chip_info(data);
+	dev_set_drvdata(dev, data);
 
-	unsigned int cores = init_cpu_cores();
-	perf_t *perf = devm_kcalloc(dev, cores, sizeof(perf_t), GFP_KERNEL);
-	if (!perf)
-	{
-		return NULL;
-	}
+	// unsigned int cores = init_cpu_cores();
+	// perf_t *perf = devm_kcalloc(dev, cores, sizeof(perf_t), GFP_KERNEL);
+	// if (!perf)
+	// {
+	// 	return NULL;
+	// }
 
-	data->perf = perf;
-	return data;
+	// struct preempt_notifier *notifiers = alloc_preempt_notifiers(dev, cores);
+	// if (!notifiers)
+	// {
+	// 	return NULL;
+	// }
+	return 0;
 }
 
 static void set_timeout_ms(energy_t *data)
@@ -554,20 +598,20 @@ static int energy_probe(struct platform_device *pd)
 {
 	struct device *dev = &pd->dev;
 
-	energy_t *data = alloc_energy_data(dev);
-	if (!data)
-	{
-		return -ENOMEM;
-	}
-	set_hwmon_chip_info(data);
-	dev_set_drvdata(dev, data);
+	int ret;
+	ret = alloc_energy_data(dev);
 
-	int ret = alloc_energy_sensor(dev);
+	if (ret)
+	{
+		return ret;
+	}
+	ret = alloc_energy_sensor(dev);
 	if (ret)
 	{
 		return ret;
 	}
 
+	energy_t *data = dev_get_drvdata(dev);
 	mutex_init(&data->lock);
 	set_energy_unit(data);
 	set_timeout_ms(data);
@@ -694,7 +738,6 @@ static int __init energy_init(void)
 		return ret;
 	}
 
-
 	lookup_functions();
 	// fh_install_hook(&fh);
 	// setup_ftrace_filter();
@@ -715,7 +758,7 @@ static void __exit energy_exit(void)
 	// fh_remove_hook(&fh);
 	// int ftrace = unregister_ftrace_function(&f_ops);
 	// pr_alert("%s(): ret: %d\n", "unregister_ftrace_function", ftrace);
-	
+
 	pr_alert("energy module unloaded\n");
 	pr_alert("[WARNING]: EXITING KERNEL MODE - PREEMPTION ENABLED, SWITCHING TO USER MODE! :)\n");
 }

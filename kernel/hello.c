@@ -13,9 +13,15 @@
 #define ENERGY_CONSTANT 100
 #define HWMON_PATH "/sys/class/hwmon/hwmon5/energy%i_input"
 
-static unsigned long long read_energy(int core)
+static cpu_set_t mask;
+static pthread_t *threads;
+
+static void init_threads(int nr_threads);
+static void wait_threads(int nr_threads);
+static void cancel_threads(int nr_threads);
+
+static unsigned long long read_energy()
 {
-    core = core + 1;
     unsigned long long reading = 0;
     char *str = malloc(strlen(HWMON_PATH) * sizeof(char));
     if (!str)
@@ -23,7 +29,7 @@ static unsigned long long read_energy(int core)
         return -1;
     }
 
-    sprintf(str, HWMON_PATH, core);
+    sprintf(str, HWMON_PATH, 1);
     FILE *file = fopen(str, "r");
     char energy_reading[50];
     fgets(energy_reading, 50, file);
@@ -33,18 +39,6 @@ static unsigned long long read_energy(int core)
     return reading;
 }
 
-static int load(int n)
-{
-
-    for (int i = 0; i < n; i++)
-    {
-        // syscall(SYS_write, 1, "hello\n", 8);
-        printf("hello\n");
-    }
-}
-
-cpu_set_t mask;
-
 void set_cpu_affinity(unsigned int core)
 {
     CPU_ZERO(&mask);
@@ -52,41 +46,59 @@ void set_cpu_affinity(unsigned int core)
     sched_setaffinity(0, sizeof(cpu_set_t), &mask);
 }
 
-void *func(void *args)
+void *func(void *data)
 {
-    sleep(5);
+    while (1)
+    {
+        // syscall(SYS_write, 1, "hello\n", 8);
+        printf("hello, world: %ld\n", pthread_self());
+    }
 }
-#define NUM_THREADS 5
+
+static void wait_threads(int nr_threads)
+{
+    for (int i = 0; i < nr_threads; i++)
+    {
+        pthread_join(threads[i], NULL);
+    }
+}
+
+static void init_threads(int nr_threads)
+{
+    threads = malloc(nr_threads * sizeof(pthread_t));
+
+    for (int i = 0; i < nr_threads; i++)
+    {
+        pthread_create(&threads[i], NULL, func, NULL);
+    }
+}
+
+
+static void cancel_threads(int nr_threads)
+{
+    for (int i = 0; i < nr_threads; i++)
+    {
+        pthread_cancel(threads[i]);
+    }
+}
 
 int main(int argc, char *argv[])
 {
     int pid = getpid();
     printf("pid: %d\n", pid);
-    int core = atoi(argv[1]);
-    int n = atoi(argv[2]);
 
-    // set_cpu_affinity(core);
+    int nr_threads = atoi(argv[1]);
+    int time = atoi(argv[2]);
 
-    pthread_t threads[NUM_THREADS];
-
-    for (int i = 0; i < NUM_THREADS; i++)
-    {
-        pthread_create(&threads[i], NULL, func, NULL);
-    }
-
-    
-
-    unsigned long long before = read_energy(core);
-
-    for (int i = 0; i < NUM_THREADS; i++)
-    {
-        pthread_join(threads[i], NULL);
-    }
-    load(n);
-    unsigned long long after = read_energy(core);
+    init_threads(nr_threads);
+    unsigned long long before = read_energy();
+    wait_threads(nr_threads);
+    sleep(time);
+    cancel_threads(nr_threads);
+    unsigned long long after = read_energy();
 
     double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
     printf("=====================C======================\n");
-    printf("Core: %i energy consumed: %fJ\n", core, result);
+    printf("energy consumed: %fJ\n", result);
     printf("=====================C======================\n");
 }

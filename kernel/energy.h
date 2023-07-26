@@ -67,6 +67,7 @@ typedef struct energy_data
      */
     // struct perf_event *events[NR_CPUS_PERF];
 
+    struct preempt_notifier *notifiers;
     perf_t *perf;
 
 } energy_t;
@@ -109,7 +110,7 @@ static int alloc_label_l(struct device *dev);
 
 static int alloc_energy_sensor(struct device *dev);
 static void set_hwmon_chip_info(energy_t *data);
-static energy_t *alloc_energy_data(struct device *dev);
+static int alloc_energy_data(struct device *dev);
 
 static void set_timeout_ms(energy_t *data);
 static void set_custom_timeout_ms(energy_t *data, const int timeout_ms);

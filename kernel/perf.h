@@ -40,6 +40,25 @@ static void print_perf_event_state(struct perf_event *event)
 #endif
 }
 
+/* perf enumerates hw threads for SMT/hyper-threading, multiply by 2 */
+static unsigned int get_perf_cpu_count(void)
+{
+	return get_core_cpu_count() * 2;
+}
+
+static int perf_alloc(struct device *dev)
+{
+	unsigned int cores = get_perf_cpu_count();
+	perf_t *perf = devm_kcalloc(dev, cores, sizeof(perf_t), GFP_KERNEL);
+	if (!perf)
+	{
+		return -ENOMEM;
+	}
+	energy_t *data = dev_get_drvdata(dev);
+	data->perf = perf;
+	return 0;
+}
+
 static void config_perf_event_energy_attr(struct perf_event_attr *attr)
 {
 	attr->type = ENERGY_TYPE,
@@ -162,11 +181,6 @@ static int release_perf_event_kernel_counters(struct device *dev)
 	return ret;
 }
 
-/* perf enumerates hw threads for SMT/hyper-threading, multiply by 2 */
-static unsigned int get_perf_cpu_count(void)
-{
-	return get_core_cpu_count() * 2;
-}
 
 static int perf_alloc_cpu_cores(struct device *dev)
 {
