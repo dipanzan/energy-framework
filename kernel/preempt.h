@@ -37,17 +37,30 @@ static void __sched_out(struct preempt_notifier *notifier, struct task_struct *n
     pr_alert("%s(): current: %s(%d), next: %s(%d)\n", __FUNCTION__, current->comm, current->pid, next->comm, next->pid);
 }
 
-static struct preempt_notifier *alloc_preempt_notifiers(struct device *dev, unsigned int cores)
+static int alloc_preempt_notifiers(struct device *dev)
 {
     energy_t *data = dev_get_drvdata(dev);
-    struct preempt_notifier *notifiers = devm_kcalloc(dev, cores, sizeof(struct preempt_notifier), GFP_KERNEL);
+    struct preempt_notifier *notifiers = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(struct preempt_notifier), GFP_KERNEL);
     if (!notifiers)
     {
-        return NULL;
+        pr_alert("%s(): failed!\n", __FUNCTION__);
+        return -ENOMEM;
     }
     data->notifiers = notifiers;
-    return data->notifiers;
+    return 0;
 }
+
+static int init_preempt_callbacks(struct device *dev)
+{
+    energy_t *data = dev_get_drvdata(dev);
+    for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+    {
+        struct preempt_notifier notifier = data->notifiers[cpu];
+        notifier.ops = &p_ops;
+    }
+    return 0;
+}
+
 static int init_preempt_notifier(struct platform_device *pd)
 {
     struct device *dev = &pd->dev;
@@ -93,6 +106,43 @@ static void __preempt_notifier_unregister(struct task_struct *p)
         pr_alert("%s() =======================\n", __FUNCTION__);
         preempt_notifier_dec();
         preempt_notifier_unregister(notifier);
+
+        status = NOT_STARTED;
+    }
+}
+
+static void ____preempt_notifier_register(struct device *dev, struct task_struct *p)
+{
+    if (status == RUNNING)
+    {
+        status = COMPLETE;
+        return;
+    }
+
+    energy_t *data = dev_get_drvdata(dev);
+    int cpu = p->thread_info.cpu;
+    struct preempt_notifier notifier = data->notifiers[cpu];
+    if (status == NOT_STARTED)
+    {
+        pr_alert("%s() =======================\n", __FUNCTION__);
+        INIT_HLIST_HEAD(&p->preempt_notifiers);
+        preempt_notifier_inc();
+        preempt_notifier_register(&notifier);
+
+        status = RUNNING;
+    }
+}
+
+static void ____preempt_notifier_unregister(struct device *dev, struct task_struct *p)
+{
+    energy_t *data = dev_get_drvdata(dev);
+    int cpu = p->thread_info.cpu;
+    struct preempt_notifier notifier = data->notifiers[cpu];
+    if (status == COMPLETE)
+    {
+        pr_alert("%s() =======================\n", __FUNCTION__);
+        preempt_notifier_dec();
+        preempt_notifier_unregister(&notifier);
 
         status = NOT_STARTED;
     }

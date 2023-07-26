@@ -48,13 +48,12 @@ static unsigned int get_perf_cpu_count(void)
 
 static int perf_alloc(struct device *dev)
 {
-	unsigned int cores = get_perf_cpu_count();
-	perf_t *perf = devm_kcalloc(dev, cores, sizeof(perf_t), GFP_KERNEL);
+	energy_t *data = dev_get_drvdata(dev);
+	perf_t *perf = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(perf_t), GFP_KERNEL);
 	if (!perf)
 	{
 		return -ENOMEM;
 	}
-	energy_t *data = dev_get_drvdata(dev);
 	data->perf = perf;
 	return 0;
 }
@@ -245,6 +244,17 @@ static int perf_alloc_label_l(struct device *dev)
 	}
 	perf_set_label_l(data, label_l);
 	return 0;
+}
+
+static int release_perf_counters(struct device *dev)
+{
+	int ret = 0;
+	if (mode == 1)
+	{
+		ret |= disable_perf_events(dev);
+		ret |= release_perf_event_kernel_counters(dev);
+	}
+	return ret;
 }
 
 #endif /* _PERF_H */

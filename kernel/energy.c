@@ -235,11 +235,13 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	rcu_read_lock();
 	struct task_struct *p = current;
 	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	// ____preempt_notifier_register(dev, p);
 	__preempt_notifier_register(p);
 	pr_alert("pid: %d, comm: %s, thread_info CPU: %d\n", p->pid, p->comm, p->thread_info.cpu);
 
 	find_threads(p);
 	__preempt_notifier_unregister(p);
+	// ____preempt_notifier_unregister(dev, p);
 	rcu_read_unlock();
 
 	energy_t *data = dev_get_drvdata(dev);
@@ -479,8 +481,8 @@ static int init_perf_backend(struct device *dev)
 	int ret = 0;
 	if (mode == 1)
 	{
+		ret |= perf_alloc_cpu_cores(dev); // CPU allocation must be done 1st, DO NOT CHANGE ORDER!
 		ret |= perf_alloc(dev);
-		ret |= perf_alloc_cpu_cores(dev);
 		ret |= perf_alloc_socket_config(dev);
 		ret |= perf_alloc_sensor_accumulator(dev);
 		ret |= perf_alloc_label_l(dev);
@@ -513,6 +515,11 @@ static int alloc_energy_sensor(struct device *dev)
 	ret |= alloc_cpu_socket(dev);
 	ret |= init_msr_backend(dev);
 	ret |= init_perf_backend(dev);
+
+	// preempt support WIP
+	ret |= alloc_preempt_notifiers(dev);
+	ret |= init_preempt_callbacks(dev);
+	
 
 	return ret;
 }
@@ -552,19 +559,6 @@ static int alloc_energy_data(struct device *dev)
 	}
 	set_hwmon_chip_info(data);
 	dev_set_drvdata(dev, data);
-
-	// unsigned int cores = init_cpu_cores();
-	// perf_t *perf = devm_kcalloc(dev, cores, sizeof(perf_t), GFP_KERNEL);
-	// if (!perf)
-	// {
-	// 	return NULL;
-	// }
-
-	// struct preempt_notifier *notifiers = alloc_preempt_notifiers(dev, cores);
-	// if (!notifiers)
-	// {
-	// 	return NULL;
-	// }
 	return 0;
 }
 
@@ -600,11 +594,11 @@ static int energy_probe(struct platform_device *pd)
 
 	int ret;
 	ret = alloc_energy_data(dev);
-
 	if (ret)
 	{
 		return ret;
 	}
+
 	ret = alloc_energy_sensor(dev);
 	if (ret)
 	{
@@ -635,17 +629,6 @@ static int energy_probe(struct platform_device *pd)
 
 	struct task_struct *energy_thread = start_energy_thread(dev, data);
 	return PTR_ERR_OR_ZERO(energy_thread);
-}
-
-static int release_perf_counters(struct device *dev)
-{
-	int ret = 0;
-	if (mode == 1)
-	{
-		ret |= disable_perf_events(dev);
-		ret |= release_perf_event_kernel_counters(dev);
-	}
-	return ret;
 }
 
 static int energy_remove(struct platform_device *pd)
