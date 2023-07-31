@@ -7,6 +7,16 @@ int (*migrate_task_to_func)(struct task_struct *p, int cpu);
 int (*migrate_swap_func)(struct task_struct *, struct task_struct *);
 long (*sched_setaffinity_func)(pid_t pid, const struct cpumask *in_mask);
 
+atomic_t *perf_sched_count_var;
+struct static_key_false *perf_sched_events_var;
+struct mutex *perf_sched_mutex_var;
+
+static void lookup_vars(void)
+{
+    perf_sched_count_var = (void *)kallsyms_lookup_name_func("perf_sched_count");
+    perf_sched_events_var = (void *)kallsyms_lookup_name_func("perf_sched_events");
+    perf_sched_mutex_var = (void *)kallsyms_lookup_name_func("perf_sched_mutex");
+}
 static void lookup_functions(void)
 {
     sched_setnuma_func = (void *)kallsyms_lookup_name_func("sched_setnuma");

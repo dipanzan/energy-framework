@@ -10,6 +10,30 @@
 #define INACTIVE "PERF_EVENT_STATE_INACTIVE [0]\n"
 #define ACTIVE "PERF_EVENT_STATE_ACTIVE [1]\n"
 
+static void __EXPERIMENT_enable_perf_sched(void)
+{
+	pr_alert("%s(): called\n", __FUNCTION__);
+	mutex_lock(perf_sched_mutex_var);
+	// rcu_read_lock();
+    static_branch_enable(perf_sched_events_var);
+    synchronize_rcu();
+    atomic_inc(perf_sched_count_var);
+	// rcu_read_unlock();
+    mutex_unlock(perf_sched_mutex_var);
+}
+
+static void __EXPERIMENT_disable_perf_sched(void)
+{
+	pr_alert("%s(): called\n", __FUNCTION__);
+	mutex_lock(perf_sched_mutex_var);
+	// rcu_read_lock();
+    static_branch_disable(perf_sched_events_var);
+    synchronize_rcu();
+    atomic_dec(perf_sched_count_var);
+	// rcu_read_unlock();
+    mutex_unlock(perf_sched_mutex_var);
+}
+
 static void print_perf_event_state(struct perf_event *event)
 {
 #if DEBUG
@@ -71,6 +95,7 @@ static void config_perf_event_energy_attr(struct perf_event_attr *attr)
 	attr->read_format = PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING,
 	attr->disabled = 1,
 	attr->aux_output = 0;
+	// attr->task = 1;
 }
 
 static int alloc_perf_event_attrs(struct device *dev)

@@ -234,14 +234,12 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 {
 	rcu_read_lock();
 	struct task_struct *p = current;
-	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
-	// ____preempt_notifier_register(dev, p);
-	__preempt_notifier_register(p);
-	pr_alert("pid: %d, comm: %s, thread_info CPU: %d\n", p->pid, p->comm, p->thread_info.cpu);
-
+	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
 	find_threads(p);
+	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	__preempt_notifier_register(p);
+
 	__preempt_notifier_unregister(p);
-	// ____preempt_notifier_unregister(dev, p);
 	rcu_read_unlock();
 
 	energy_t *data = dev_get_drvdata(dev);
@@ -674,10 +672,9 @@ static const struct x86_cpu_id amd_ryzen_cpu_ids[] __initconst = {
 
 MODULE_DEVICE_TABLE(x86cpu, amd_ryzen_cpu_ids);
 
-struct ftrace_hook fh = HOOK("user_mode_thread", &user_mode_thread_real, user_mode_thread_fh);
-
 static int __init energy_init(void)
 {
+	trace_printk("trace-printk init\n");
 	int ret;
 
 	dump_cpu_info();
@@ -721,8 +718,12 @@ static int __init energy_init(void)
 		return ret;
 	}
 
+	lookup_vars();
 	lookup_functions();
-	// fh_install_hook(&fh);
+
+	__EXPERIMENT_enable_perf_sched();
+	fh_install_hook(&fh);
+
 	// setup_ftrace_filter();
 	// int ftrace = register_ftrace_function(&f_ops);
 	// pr_alert("%s(): ret: %d\n", "register_ftrace_function", ftrace);
@@ -736,9 +737,11 @@ static void __exit energy_exit(void)
 {
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
+
+	__EXPERIMENT_disable_perf_sched();
 	release_kprobe();
 
-	// fh_remove_hook(&fh);
+	fh_remove_hook(&fh);
 	// int ftrace = unregister_ftrace_function(&f_ops);
 	// pr_alert("%s(): ret: %d\n", "unregister_ftrace_function", ftrace);
 

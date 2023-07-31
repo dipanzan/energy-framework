@@ -1,22 +1,18 @@
 #ifndef _FTRACE_H
 #define _FTRACE_H
 
-static void (*__fire_sched_in_preempt_notifiers_real)(struct task_struct *curr);
+void (*__perf_event_task_sched_in_real)(struct task_struct *prev, struct task_struct *task);
 
-static void __fire_sched_in_preempt_notifiers_fh(struct task_struct *curr)
+#pragma GCC push_options // Save current options
+#pragma GCC optimize ("no-optimize-sibling-calls")
+void __perf_event_task_sched_in_fh(struct task_struct *prev, struct task_struct *task)
 {
-    pr_alert("YAAAY\n");
-    __fire_sched_in_preempt_notifiers_real(curr);
-}
+    // pr_alert("%s(): prev: %s, task: %s\n", __FUNCTION__, prev->comm, task->comm);
+    trace_printk("%s(): prev: %s, task: %s\n", __FUNCTION__, prev->comm, task->comm);
 
-static pid_t (*user_mode_thread_real)(int (*fn)(void *), void *arg, unsigned long flags);
-
-static pid_t user_mode_thread_fh(int (*fn)(void *), void *arg, unsigned long flags)
-{
-    pid_t pid = user_mode_thread_real(fn, arg, flags);
-    pr_alert("%s(): %d\n", __FUNCTION__, pid);
-    return pid;
+    __perf_event_task_sched_in_real(prev, task);
 }
+#pragma GCC pop_options  // Restore saved options
 
 static asmlinkage void (*schedule_real)(void);
 
@@ -34,7 +30,7 @@ static asmlinkage void schedule_fh(void)
         .name = (_name),                     \
         .original = (_original),             \
         .function = (_function),          \ 
-      \
+       \
     }
 
 struct ftrace_hook
@@ -47,10 +43,11 @@ struct ftrace_hook
     struct ftrace_ops ops;
 };
 
+struct ftrace_hook fh = HOOK("__perf_event_task_sched_in", &__perf_event_task_sched_in_real, __perf_event_task_sched_in_fh);
+
 static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *ops, struct ftrace_regs *regs)
 {
     struct ftrace_hook *hook = container_of(ops, struct ftrace_hook, ops);
-    pr_alert("thunk: %s\n", hook->name);
 
     // do not trace if function got invoked from the module itself
     // can happen with global functions like schedule()
@@ -83,7 +80,7 @@ static int fh_install_hook(struct ftrace_hook *hook)
         return err;
     }
     hook->ops.func = fh_ftrace_thunk;
-    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS_IF_SUPPORTED | FTRACE_OPS_FL_IPMODIFY; // TODO: recursion?
+    hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS_IF_SUPPORTED | FTRACE_OPS_FL_IPMODIFY | FTRACE_OPS_FL_RECURSION;
 
     err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 1);
     pr_alert("ftrace_set_filter_ip: %d\n", err);
@@ -150,22 +147,27 @@ static asmlinkage long fh_sys_execve(const char __user *filename,
     return ret;
 }
 
-static char *function_hook = "user_mode_thread";
+static char *function_hook = "sys_clone3";
+
+
+// #if !USE_FENTRY_OFFSET
+// #pragma GCC optimize("-fno-optimize-sibling-calls")
+// #endif
+
 
 static void notrace ftrace_callback(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *op, struct ftrace_regs *regs)
 {
-    pr_alert("%s(): ip: %p, parent_ip: %p\n", __FUNCTION__, ip, parent_ip);
-    pr_alert("%s(): %s\n", __FUNCTION__, function_hook, ip, parent_ip);
+    // pr_alert("%s(): ip: %p, parent_ip: %p\n", __FUNCTION__, ip, parent_ip);
 
     if (!within_module(parent_ip, THIS_MODULE))
     {
-        pr_alert("%s(): %s\n", __FUNCTION__, function_hook, ip, parent_ip);
+        // pr_info("%s(): %s\n", __FUNCTION__, function_hook, ip, parent_ip);
     }
 }
 
 struct ftrace_ops f_ops = {
     .func = ftrace_callback,
-    .flags = FTRACE_OPS_FL_SAVE_REGS_IF_SUPPORTED | FTRACE_OPS_FL_IPMODIFY | FTRACE_OPS_FL_RECURSION,
+    .flags = FTRACE_OPS_FL_SAVE_REGS_IF_SUPPORTED | FTRACE_OPS_FL_RECURSION,
     .private = NULL,
 };
 
