@@ -36,6 +36,8 @@ typedef struct perf_data
     struct perf_event *event;
 } perf_t;
 
+struct preempt_notifier_data;
+
 typedef struct preempt_notifier_data
 {
     struct preempt_notifier *notifier;

@@ -29,12 +29,14 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
 
 static void __sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    pr_alert("%s(): current: %s(%d), cpu: %d\n", __FUNCTION__, current->comm, current->pid, cpu);
+    pr_alert("IN: %s(pid: %d, cpu: %d)\n", current->comm, current->pid, cpu);
 }
 
 static void __sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
-    pr_alert("%s(): current: %s(%d), next: %s(%d)\n", __FUNCTION__, current->comm, current->pid, next->comm, next->pid);
+    pr_alert("OUT: %s(pid: %d, cpu: %d), NEXT: %s(pid: %d, cpu: %d)\n", 
+        current->comm, current->pid, current->thread_info.cpu,
+        next->comm, next->pid, next->thread_info.cpu);
 }
 
 static inline struct preempt_notifier *alloc_preempt_notifier(void)
@@ -44,18 +46,30 @@ static inline struct preempt_notifier *alloc_preempt_notifier(void)
     return notifier;
 }
 
-static void _preempt_notifier_register_for_thread(struct preempt_notifier *notifier, struct task_struct *t)
+static void _preempt_notifier_register(struct preempt_notifier *notifier, struct task_struct *t)
 {
     if (!notifier)
     {
-        pr_alert("%s(): preempt_notifier alloc failed.\n", __FUNCTION__);
+        pr_alert("%s: preempt_notifier alloc failed.\n", t->comm);
         return;
     }
     INIT_HLIST_HEAD(&t->preempt_notifiers);
     preempt_notifier_inc();
     hlist_add_head(&notifier->link, &t->preempt_notifiers);
 
-    pr_alert("%s(): preempt_notifier registered for thread: %s\n", __FUNCTION__, t->comm);
+    pr_alert("%s(pid: %d): notifier registered\n", t->comm, t->pid);
+}
+
+static bool is_preempt_notifier_registered(struct task_struct *t)
+{
+    if (!t->preempt_notifiers.first)
+    {
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
 }
 
 static void init_preempt_notifiers(struct task_struct *p)
@@ -64,29 +78,28 @@ static void init_preempt_notifiers(struct task_struct *p)
     struct task_struct *t = p;
     while_each_thread(p, t)
     {
-        struct preempt_notifier *notifier = alloc_preempt_notifier();
-        _preempt_notifier_register_for_thread(notifier, t);
+        if (!is_preempt_notifier_registered(t))
+        {
+            struct preempt_notifier *notifier = alloc_preempt_notifier();
+            _preempt_notifier_register(notifier, t);
+        }
     }
     rcu_read_unlock();
 }
 
-
 static void release_preempt_notifiers(struct task_struct *p)
-{   
+{
     struct task_struct *t = p;
     while_each_thread(p, t)
     {
-        
     }
 }
-
 
 static void _preempt_notifier_unregister(struct preempt_notifier *notifier, struct task_struct *t)
 {
     preempt_notifier_dec();
     hlist_del(&notifier->link);
-    pr_alert("%s(): preempt_notifer unregistered for thread: %s\n", __FUNCTION__, t->comm);
-
+    pr_alert("%s notifier unregistered\n", t->comm);
 }
 
 static int alloc_preempt_notifiers(struct device *dev)
