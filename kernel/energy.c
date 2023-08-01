@@ -235,11 +235,13 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	rcu_read_lock();
 	struct task_struct *p = current;
 	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
-	find_threads(p);
+	// find_threads(p);
 	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
-	__preempt_notifier_register(p);
+	// __preempt_notifier_register(p);
 
-	__preempt_notifier_unregister(p);
+	init_preempt_notifiers(p);
+
+	// __preempt_notifier_unregister(p);
 	rcu_read_unlock();
 
 	energy_t *data = dev_get_drvdata(dev);
@@ -255,9 +257,9 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 
 	u64 value, enabled, running;
 
-	rcu_read_lock();
+	// rcu_read_lock();
 	value = perf_event_read_value(event, &enabled, &running);
-	rcu_read_unlock();
+	// rcu_read_unlock();
 
 	// pr_alert("%s(): CPU: %d, cpu: %d, value: %ld, enabled: %ld, running: %ld\n", __FUNCTION__, channel, event->cpu, value, enabled, running);
 	mutex_lock(&data->lock);
@@ -515,8 +517,8 @@ static int alloc_energy_sensor(struct device *dev)
 	ret |= init_perf_backend(dev);
 
 	// preempt support WIP
-	ret |= alloc_preempt_notifiers(dev);
-	ret |= init_preempt_callbacks(dev);
+	// ret |= alloc_preempt_notifiers(dev);
+	// ret |= init_preempt_callbacks(dev);
 	
 
 	return ret;

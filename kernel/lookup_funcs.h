@@ -11,6 +11,7 @@ atomic_t *perf_sched_count_var;
 struct static_key_false *perf_sched_events_var;
 struct mutex *perf_sched_mutex_var;
 
+// WARNING: extremely unsafe, you 
 static void lookup_vars(void)
 {
     perf_sched_count_var = (void *)kallsyms_lookup_name_func("perf_sched_count");

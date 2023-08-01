@@ -12,7 +12,7 @@
 
 static void __EXPERIMENT_enable_perf_sched(void)
 {
-	pr_alert("%s(): called\n", __FUNCTION__);
+	pr_alert("%s(): WARNING: Extremely unsafe use of static_branch_enable\n", __FUNCTION__);
 	mutex_lock(perf_sched_mutex_var);
 	// rcu_read_lock();
     static_branch_enable(perf_sched_events_var);
@@ -24,7 +24,7 @@ static void __EXPERIMENT_enable_perf_sched(void)
 
 static void __EXPERIMENT_disable_perf_sched(void)
 {
-	pr_alert("%s(): called\n", __FUNCTION__);
+	pr_alert("%s(): WARNING: Extremely unsafe use of static_branch_disable\n", __FUNCTION__);
 	mutex_lock(perf_sched_mutex_var);
 	// rcu_read_lock();
     static_branch_disable(perf_sched_events_var);

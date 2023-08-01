@@ -36,6 +36,12 @@ typedef struct perf_data
     struct perf_event *event;
 } perf_t;
 
+typedef struct preempt_notifier_data
+{
+    struct preempt_notifier *notifier;
+    char thread_name[TASK_COMM_LEN];
+} notifier_t;
+
 typedef struct energy_data
 {
     struct hwmon_channel_info energy_info;
