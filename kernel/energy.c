@@ -44,6 +44,12 @@
 /* 	do not move header files above the pr_fmt format statements!
 	otherwise the pr_fmt() family of functions don't work.
 */
+
+// WARNING - multiple threads will access this pointer!!!
+// FOR NOW DO NOT MOVE THIS UNDER #include directives, this is needed by
+// preempt.h to access struct device *dev from platform_device by sched_in/out functions
+static struct platform_device *cpu_energy_pd;
+
 #include "cpu-info.h"
 #include "energy.h"
 #include "kprobes.h"
@@ -68,6 +74,8 @@ MODULE_PARM_DESC(name, "[name] is the process name to attach to.");
 MODULE_PARM_DESC(pid, "[pid] is the PID to to attach to.");
 MODULE_PARM_DESC(cpu, "[cpu] is the target CPU for energy measurement.");
 MODULE_PARM_DESC(mode, "[mode] is the backend mode for energy data source. [0]- MSR, [1]- perf");
+
+
 
 static void set_energy_unit(energy_t *data)
 {
@@ -229,7 +237,6 @@ static unsigned int find_sw_thread_num(unsigned int cpu)
 }
 
 // HELLO MARKER
-
 static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
 	rcu_read_lock();
@@ -240,10 +247,6 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	init_preempt_notifiers(p);
 	// find_threads(p);
 	// __preempt_notifier_register(p);
-
-
-	
-	
 
 	// __preempt_notifier_unregister(p);
 	rcu_read_unlock();
@@ -665,8 +668,6 @@ static struct platform_driver energy_driver = {
 		.name = DRIVER_NAME,
 	},
 };
-
-static struct platform_device *cpu_energy_pd;
 
 static const struct x86_cpu_id amd_ryzen_cpu_ids[] __initconst = {
 	X86_MATCH_VENDOR_FAM_MODEL(AMD, 0x17, 0x31, NULL),
