@@ -83,7 +83,7 @@ static int fh_install_hook(struct ftrace_hook *hook)
     hook->ops.flags = FTRACE_OPS_FL_SAVE_REGS_IF_SUPPORTED | FTRACE_OPS_FL_IPMODIFY | FTRACE_OPS_FL_RECURSION;
 
     err = ftrace_set_filter_ip(&hook->ops, hook->address, 0, 1);
-    pr_alert("ftrace_set_filter_ip: %d\n", err);
+    // pr_alert("ftrace_set_filter_ip: %d\n", err);
     if (err)
     {
         pr_alert("ftrace_set_filter_ip() failed: %d\n", err);
@@ -91,7 +91,7 @@ static int fh_install_hook(struct ftrace_hook *hook)
     }
 
     err = register_ftrace_function(&hook->ops);
-    pr_alert("register_ftrace_function: %d\n", err);
+    // pr_alert("register_ftrace_function: %d\n", err);
 
     if (err)
     {
@@ -101,6 +101,9 @@ static int fh_install_hook(struct ftrace_hook *hook)
         ftrace_set_filter_ip(&hook->ops, hook->address, 1, 0);
         return err;
     }
+
+    pr_alert("FTRACE init complete! :)\n");
+    msleep(INIT);
     return 0;
 }
 

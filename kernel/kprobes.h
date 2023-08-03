@@ -28,6 +28,9 @@ static int init_kprobe(void)
     int ret = 0;
     ret |= register_kprobe(&kp);
     ret |= init_kallsyms();
+
+    pr_alert("KPROBES init complete! :)\n");
+    msleep(INIT);
     return ret;
 }
 

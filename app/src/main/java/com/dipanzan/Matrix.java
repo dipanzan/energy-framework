@@ -5,6 +5,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
 
+import static com.dipanzan.Method.printEnergyConsumed;
+import static com.dipanzan.Method.readEnergy;
+
 public class Matrix {
     private static int NUM_THEADS = 0;
     private static int TIME = 0;
@@ -21,8 +24,11 @@ public class Matrix {
     }
 
     private void load() {
+//        long before = readEnergy(1);
         System.out.println(Thread.currentThread().getName() + " running");
         run();
+//        long after = readEnergy(1);
+//        printEnergyConsumed(1, before, after);
 
     }
 

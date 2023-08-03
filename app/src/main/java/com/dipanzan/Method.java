@@ -28,7 +28,7 @@ public class Method {
         printEnergyConsumed(core, before, after);
     }
 
-    private static void printEnergyConsumed(int core, long before, long after) {
+    public static void printEnergyConsumed(int core, long before, long after) {
 //        double result = (after - before) / Math.pow(10, 6);
         double result = (after - before) * 2.3283064365386962890625e-10;
         System.out.println("=====================JAVA======================");
@@ -36,7 +36,7 @@ public class Method {
         System.out.println("=====================JAVA======================");
     }
 
-    private static long readEnergy(int core) {
+    public static long readEnergy(int core) {
         core = core + 1;
         try {
             String read = Files.readString(Paths.get("/sys/class/hwmon/hwmon5/energy" + core + "_input"));

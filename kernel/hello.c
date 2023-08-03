@@ -92,9 +92,13 @@ int main(int argc, char *argv[])
 
     init_threads(nr_threads);
     unsigned long long before = read_energy();
-    wait_threads(nr_threads);
+    // wait_threads(nr_threads);
+    // sleep(time);
+    // cancel_threads(nr_threads);
+
+
     sleep(time);
-    cancel_threads(nr_threads);
+
     unsigned long long after = read_energy();
 
     double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
