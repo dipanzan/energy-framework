@@ -247,7 +247,7 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 
 	// find_threads(p);
 	init_preempt_notifiers(p);
-	// release_preempt_notifiers(p);
+	release_preempt_notifiers(p);
 
 	rcu_read_unlock();
 

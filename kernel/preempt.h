@@ -29,16 +29,16 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
     sched_setaffinity_func(pid, &mask);
 }
 
-static void __sched_in(struct preempt_notifier *notifier, int cpu)
+static inline void __sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    pr_alert("IN: [%s (PID: %d, CPU: %d)]\n", current->comm, current->pid, cpu);
+    // pr_alert("IN: [%s (PID: %d, CPU: %d)]\n", current->comm, current->pid, cpu);
 }
 
-static void __sched_out(struct preempt_notifier *notifier, struct task_struct *next)
+static inline void __sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
-    pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
-             current->comm, current->pid, current->thread_info.cpu,
-             next->comm, next->pid, next->thread_info.cpu);
+    // pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
+    //          current->comm, current->pid, current->thread_info.cpu,
+    //          next->comm, next->pid, next->thread_info.cpu);
 }
 
 static bool is_preempt_notifier_registered(struct task_struct *p)
@@ -54,7 +54,6 @@ static void init_preempt_notifier(struct task_struct *p)
         return;
     }
 
-
     struct preempt_notifier *notifier = kmalloc(sizeof(struct preempt_notifier), GFP_KERNEL);
     if (!notifier)
     {
@@ -62,7 +61,7 @@ static void init_preempt_notifier(struct task_struct *p)
         return;
     }
 
-    // WARNING: static initializer viable?
+    /* WARNING: static initializer viable? */
     struct preempt_ops *ops = kmalloc(sizeof(struct preempt_ops), GFP_KERNEL);
     if (!ops)
     {
@@ -81,14 +80,14 @@ static void init_preempt_notifier(struct task_struct *p)
 
 static void init_preempt_notifiers(struct task_struct *p)
 {
-    // if (status == RUNNING)
-    // {
-    //     status = COMPLETE;
-    //     return;
-    // }
+    if (status == RUNNING)
+    {
+        status = COMPLETE;
+        return;
+    }
 
-    // if (status == NOT_STARTED)
-    // {
+    if (status == NOT_STARTED)
+    {
         rcu_read_lock();
         struct task_struct *t = p;
         init_preempt_notifier(p); // parent (p) is not included in the while_each_thread
@@ -97,8 +96,8 @@ static void init_preempt_notifiers(struct task_struct *p)
             init_preempt_notifier(t); // all other threads (t) other than parent (p)
         }
         rcu_read_unlock();
-    //     status = RUNNING;
-    // }
+        status = RUNNING;
+    }
 }
 
 static void release_preempt_notifier(struct task_struct *p)
@@ -109,66 +108,31 @@ static void release_preempt_notifier(struct task_struct *p)
         return;
     }
 
-    // if (status == COMPLETE)
-    // {
-        struct hlist_node *node, *temp;
-        hlist_for_each_safe(node, temp, &p->preempt_notifiers)
-        {
-            struct preempt_notifier *notifier = container_of(node, struct preempt_notifier, link);
-
-            hlist_del(&notifier->link);
-            preempt_notifier_dec();
-
-            kfree(notifier->ops);
-            kfree(notifier);
-            pr_alert("preempt_notifier released: %s(%d)\n", p->comm, p->pid);
-        }
-    //     status = NOT_STARTED;
-    // }
+    struct hlist_node *node, *temp;
+    hlist_for_each_safe(node, temp, &p->preempt_notifiers)
+    {
+        struct preempt_notifier *notifier = container_of(node, struct preempt_notifier, link);
+        hlist_del(&notifier->link);
+        preempt_notifier_dec();
+        kfree(notifier->ops);
+        kfree(notifier);
+        pr_alert("preempt_notifier released: %s(%d)\n", p->comm, p->pid);
+    }
 }
 
 static void release_preempt_notifiers(struct task_struct *p)
 {
-    rcu_read_lock();
-    struct task_struct *t = p;
-    release_preempt_notifier(p); // parent (p) is not included in the while_each_thread
-    while_each_thread(p, t)
-    {
-        release_preempt_notifier(t); // all other threads (t) other than parent (p)
-    }
-    rcu_read_unlock();
-}
-
-static void ___preempt_notifier_register___(struct task_struct *p)
-{
-    if (status == RUNNING)
-    {
-        status = COMPLETE;
-        return;
-    }
-
-    if (status == NOT_STARTED)
-    {
-        pr_alert("%s() =======================\n", __FUNCTION__);
-        INIT_HLIST_HEAD(&p->preempt_notifiers);
-        preempt_notifier_inc();
-        // preempt_notifier_register(notifier);
-        hlist_add_head(&notifier->link, &p->preempt_notifiers);
-
-        status = RUNNING;
-    }
-}
-
-static void ___preempt_notifier_unregister___(struct task_struct *p)
-{
     if (status == COMPLETE)
     {
-        pr_alert("%s() =======================\n", __FUNCTION__);
-        preempt_notifier_dec();
-        // preempt_notifier_unregister(notifier);
-        hlist_del(&notifier->link);
+        rcu_read_lock();
+        struct task_struct *t = p;
+        release_preempt_notifier(p); // parent (p) is not included in the while_each_thread
+        while_each_thread(p, t)
+        {
+            release_preempt_notifier(t); // all other threads (t) other than parent (p)
+        }
+        rcu_read_unlock();
         status = NOT_STARTED;
     }
 }
-
 #endif /* _PREEMPT_H */
