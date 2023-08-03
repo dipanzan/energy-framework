@@ -245,17 +245,10 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
 	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
 
-	find_threads(p);
+	// find_threads(p);
 	init_preempt_notifiers(p);
-	release_preempt_notifiers(p);
+	// release_preempt_notifiers(p);
 
-	// init_preempt_notifiers(p);
-
-
-
-
-	// __preempt_notifier_register(p);
-	// __preempt_notifier_unregister(p);
 	rcu_read_unlock();
 
 	energy_t *data = dev_get_drvdata(dev);

@@ -18,6 +18,8 @@ static const struct preempt_ops p_ops = {
     .sched_in = __sched_in,
     .sched_out = __sched_out};
 
+static enum STATUS status = NOT_STARTED;
+
 static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
 {
     pr_alert("%s called for pid: %d on cpu: %d\n", __FUNCTION__, pid, cpu);
@@ -29,14 +31,14 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
 
 static void __sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    // pr_alert("IN: [%s (PID: %d, CPU: %d)]\n", current->comm, current->pid, cpu);
+    pr_alert("IN: [%s (PID: %d, CPU: %d)]\n", current->comm, current->pid, cpu);
 }
 
 static void __sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
-    // pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
-    //          current->comm, current->pid, current->thread_info.cpu,
-    //          next->comm, next->pid, next->thread_info.cpu);
+    pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
+             current->comm, current->pid, current->thread_info.cpu,
+             next->comm, next->pid, next->thread_info.cpu);
 }
 
 static bool is_preempt_notifier_registered(struct task_struct *p)
@@ -52,15 +54,26 @@ static void init_preempt_notifier(struct task_struct *p)
         return;
     }
 
+
     struct preempt_notifier *notifier = kmalloc(sizeof(struct preempt_notifier), GFP_KERNEL);
     if (!notifier)
     {
         pr_alert("preempt_notifier alloc failed: %s(%d)\n", p->comm, p->pid);
         return;
     }
+
+    // WARNING: static initializer viable?
+    struct preempt_ops *ops = kmalloc(sizeof(struct preempt_ops), GFP_KERNEL);
+    if (!ops)
+    {
+        pr_alert("preempt_ops alloc failed: %s(%d)\n", p->comm, p->pid);
+        return;
+    }
+    ops->sched_in = __sched_in;
+    ops->sched_out = __sched_out;
+
     INIT_HLIST_HEAD(&p->preempt_notifiers);
-    preempt_notifier_init(notifier, &p_ops);
-    // notifier->ops = &p_ops;
+    preempt_notifier_init(notifier, ops);
     preempt_notifier_inc();
     hlist_add_head(&notifier->link, &p->preempt_notifiers);
     pr_alert("preempt_notifier registered: %s(%d)\n", p->comm, p->pid);
@@ -68,14 +81,24 @@ static void init_preempt_notifier(struct task_struct *p)
 
 static void init_preempt_notifiers(struct task_struct *p)
 {
-    struct task_struct *t = p;
-    rcu_read_lock();
-    init_preempt_notifier(p); // parent (p) is not included in the while_each_thread
-    while_each_thread(p, t)
-    {
-        init_preempt_notifier(t); // all other threads (t) other than parent (p)
-    }
-    rcu_read_unlock();
+    // if (status == RUNNING)
+    // {
+    //     status = COMPLETE;
+    //     return;
+    // }
+
+    // if (status == NOT_STARTED)
+    // {
+        rcu_read_lock();
+        struct task_struct *t = p;
+        init_preempt_notifier(p); // parent (p) is not included in the while_each_thread
+        while_each_thread(p, t)
+        {
+            init_preempt_notifier(t); // all other threads (t) other than parent (p)
+        }
+        rcu_read_unlock();
+    //     status = RUNNING;
+    // }
 }
 
 static void release_preempt_notifier(struct task_struct *p)
@@ -85,22 +108,29 @@ static void release_preempt_notifier(struct task_struct *p)
         pr_alert("preempt_notifier cannot release: %s(%d) not registered\n", p->comm, p->pid);
         return;
     }
-    struct hlist_node *node, *temp;
-    hlist_for_each_safe(node, temp, &p->preempt_notifiers)
-    {
-        struct preempt_notifier *notifier = container_of(node, struct preempt_notifier, link);
-        hlist_del(&notifier->link);
-        preempt_notifier_dec();
-        kfree(notifier);
-        pr_alert("preempt_notifier released: %s(%d)\n", p->comm, p->pid);
-    }
+
+    // if (status == COMPLETE)
+    // {
+        struct hlist_node *node, *temp;
+        hlist_for_each_safe(node, temp, &p->preempt_notifiers)
+        {
+            struct preempt_notifier *notifier = container_of(node, struct preempt_notifier, link);
+
+            hlist_del(&notifier->link);
+            preempt_notifier_dec();
+
+            kfree(notifier->ops);
+            kfree(notifier);
+            pr_alert("preempt_notifier released: %s(%d)\n", p->comm, p->pid);
+        }
+    //     status = NOT_STARTED;
+    // }
 }
 
 static void release_preempt_notifiers(struct task_struct *p)
 {
-    struct task_struct *t = p;
-
     rcu_read_lock();
+    struct task_struct *t = p;
     release_preempt_notifier(p); // parent (p) is not included in the while_each_thread
     while_each_thread(p, t)
     {
@@ -108,15 +138,6 @@ static void release_preempt_notifiers(struct task_struct *p)
     }
     rcu_read_unlock();
 }
-
-static void _preempt_notifier_unregister(struct preempt_notifier *notifier, struct task_struct *t)
-{
-    preempt_notifier_dec();
-    hlist_del(&notifier->link);
-    pr_alert("preempt_notifier unregistered: %s(%d)\n", t->comm, t->pid);
-}
-
-static enum STATUS status = NOT_STARTED;
 
 static void ___preempt_notifier_register___(struct task_struct *p)
 {
