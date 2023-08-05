@@ -1,8 +1,12 @@
 package com.dipanzan.type;
 
+import com.dipanzan.annotation.Energy;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.ElementMatchers;
+
+import java.lang.annotation.ElementType;
 
 import static net.bytebuddy.matcher.ElementMatchers.*;
 
@@ -53,13 +57,15 @@ public class Types {
 
     public static final ElementMatcher.Junction<MethodDescription> TARGET_METHODS =
             isMethod()
-                    .and(not(nameContains("getMethod")))
-                    .and(not(named("equals")))
-                    .and(not(named("getChars")))
-                    .and(not(named("getSecurityManager")))
-                    .and(not(named("hashCode")))
-                    .and(not(named("requireNonNull")))
-                    .and(not(named("stringSize")))
-                    .and(not(named("toString")))
-                    .and(not(named("valueOf")));
+//                    .and(not(nameContains("getMethod")))
+//                    .and(not(named("equals")))
+//                    .and(not(named("getChars")))
+//                    .and(not(named("getSecurityManager")))
+//                    .and(not(named("hashCode")))
+//                    .and(not(named("requireNonNull")))
+//                    .and(not(named("stringSize")))
+//                    .and(not(named("toString")))
+//                    .and(not(named("valueOf")))
+//                    .and(ElementMatchers.nameContains("Energy"))
+                    .and(ElementMatchers.isAnnotatedWith(Energy.class));
 }

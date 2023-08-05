@@ -15,15 +15,17 @@ public class TimerAdvice {
         return Advice.to(TimerAdvice.class);
     }
 
+    private static long before = 0;
+    private static long after = 0;
+
     @Advice.OnMethodEnter(suppress = Throwable.class)
     public static long enter(@Advice.Origin Method method,
-                             @Advice.AllArguments(typing = DYNAMIC) Object[] args) throws Exception{
+                             @Advice.AllArguments(typing = DYNAMIC) Object[] args) throws Exception {
 
-        int core = 1;
-        String energyPath = "/sys/devices/platform/amd_energy.0/hwmon/hwmon5/energy" + core + "_input";
-        String energyPath2 = "/sys/class/hwmon/hwmon5/energy" + core + "_input";
-        String result = Files.readString(Paths.get(energyPath2));
-        System.out.println(result);
+        String energyPath = "/sys/class/hwmon/hwmon5/energy1" + "_input";
+        String result = Files.readString(Paths.get(energyPath));
+        before = Long.parseLong(result);
+        System.out.println("before: " + before);
 //        try {
 //            String result = Files.readString(Paths.get(energyPath2));
 //            System.out.println("Before: " + result);
@@ -36,18 +38,16 @@ public class TimerAdvice {
     }
 
     @Advice.OnMethodExit(suppress = Throwable.class, onThrowable = Throwable.class)
-    public static void exit(@Advice.Origin Method method, @Advice.Enter long start, @Advice.Origin String origin) {
+    public static void exit(@Advice.Origin Method method, @Advice.Enter long start, @Advice.Origin String origin) throws Exception {
 
-       /* int core = 1;
-        String energyPath = "/sys/devices/platform/amd_energy.0/hwmon/hwmon5/energy" + core + "_input";
-        String energyPath2 = "/sys/class/hwmon/hwmon5/energy" + core + "_input";
-        try {
-            String result = Files.readString(Paths.get(energyPath2));
-            System.out.println("After: " + result);
+        String energyPath = "/sys/class/hwmon/hwmon5/energy1" + "_input";
+        String result = Files.readString(Paths.get(energyPath));
+        after = Long.parseLong(result);
 
-        } catch (IOException e) {
-
-        }*/
+        double consumed = (after - before) * 2.3283064365386962890625e-10;
+        System.out.println("=====================JAVA======================");
+        System.out.println("Core: " + " energy consumed: " + consumed + "J");
+        System.out.println("=====================JAVA======================");
     }
 
     private String getEnergy(int core) {

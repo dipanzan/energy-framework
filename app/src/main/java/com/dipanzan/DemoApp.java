@@ -12,8 +12,10 @@ public class DemoApp {
         int threads = Integer.parseInt(args[0]);
         System.out.println(threads);
         int time = Integer.parseInt((args[1]));
+        System.out.print("Time: ");
+        int time2 = new Scanner(System.in).nextInt();
         System.out.println(time);
-        Method.execute(() -> new Matrix(threads, time).run2());
+        Method.execute(() -> new Matrix(threads, time2).run2());
     }
 
     private static void sleep(int n)

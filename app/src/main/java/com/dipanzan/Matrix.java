@@ -1,5 +1,7 @@
 package com.dipanzan;
 
+import com.dipanzan.annotation.Energy;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +33,6 @@ public class Matrix {
 //        printEnergyConsumed(1, before, after);
 
     }
-
     public void run2() {
         List<Thread> threads = new ArrayList<>(NUM_THEADS);
         for (int i = 0; i < NUM_THEADS; i++) {
@@ -47,7 +48,6 @@ public class Matrix {
             }
         }
         threads.forEach(Thread::stop);
-
     }
 
     public void run() {
@@ -91,7 +91,7 @@ public class Matrix {
         for (int i = 0; i < SIZE; i++) {
             for (int j = 0; j < SIZE; j++) {
                 for (int k = 0; k < SIZE; k++) {
-                    c[i][j] += a[i][k] * b[k][j];
+                    c[i][j] += (long) a[i][k] * b[k][j];
                 }
             }
         }

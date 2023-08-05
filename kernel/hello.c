@@ -48,19 +48,18 @@ void set_cpu_affinity(unsigned int core)
 
 void *func(void *data)
 {
-    long long before = read_energy();
+    // long long before = read_energy();
     while (1)
     {
         // syscall(SYS_write, 1, "hello\n", 8);
         printf("hello, world: %ld\n", pthread_self());
     }
 
-    long long after = read_energy();
-    double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
-    printf("=====================C======================\n");
-    printf("energy consumed: %fJ\n", result);
-    printf("=====================C======================\n");
-}
+    // long long after = read_energy();
+    // double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
+    // printf("=====================C======================\n");
+    // printf("energy consumed: %fJ\n", result);
+    // printf("=====================C======================\n");
 }
 
 static void wait_threads(int nr_threads)
@@ -98,7 +97,7 @@ int main(int argc, char *argv[])
     int time = atoi(argv[2]);
 
     init_threads(nr_threads);
-    // unsigned long long before = read_energy();
+    unsigned long long before = read_energy();
 
     // wait_threads(nr_threads);
     // sleep(time);
@@ -106,10 +105,10 @@ int main(int argc, char *argv[])
 
     sleep(time);
 
-    // unsigned long long after = read_energy();
+    unsigned long long after = read_energy();
 
-    // double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
-    // printf("=====================C======================\n");
-    // printf("energy consumed: %fJ\n", result);
-    // printf("=====================C======================\n");
+    double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
+    printf("=====================C======================\n");
+    printf("energy consumed: %fJ\n", result);
+    printf("=====================C======================\n");
 }

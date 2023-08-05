@@ -1,5 +1,7 @@
 package com.dipanzan;
 
+import com.dipanzan.annotation.Energy;
+
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
@@ -11,12 +13,13 @@ public class Method {
         void execute();
     }
 
+    @Energy
     public static void execute(Execute e) {
-        long before = readEnergy(0);
+//        long before = readEnergy(0);
         e.execute();
-        long after = readEnergy(0);
+//        long after = readEnergy(0);
 
-        printEnergyConsumed(0, before, after);
+//        printEnergyConsumed(0, before, after);
 
     }
 

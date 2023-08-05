@@ -257,12 +257,8 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	}
 
 	struct perf_event *event = data->perf[channel].event;
-
 	u64 value, enabled, running;
-
-	// rcu_read_lock();
 	value = perf_event_read_value(event, &enabled, &running);
-	// rcu_read_unlock();
 
 	// pr_alert("%s(): CPU: %d, cpu: %d, value: %ld, enabled: %ld, running: %ld\n", __FUNCTION__, channel, event->cpu, value, enabled, running);
 	mutex_lock(&data->lock);
