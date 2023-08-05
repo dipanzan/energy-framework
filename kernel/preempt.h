@@ -12,13 +12,12 @@ enum STATUS
 };
 
 static struct preempt_notifier *notifier;
-static enum STATUS *statuses;
+// WARNING: marking this volatile for multi-threaded access to the "status" variable
+static volatile enum STATUS status = NOT_STARTED;
 
 static const struct preempt_ops p_ops = {
     .sched_in = __sched_in,
     .sched_out = __sched_out};
-
-static enum STATUS status = NOT_STARTED;
 
 static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
 {
@@ -31,14 +30,14 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
 
 static void __sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    // pr_alert("IN: [%s (PID: %d, CPU: %d)]\n", current->comm, current->pid, cpu);
+    pr_alert("IN: [%s (PID: %d, CPU: %d)]\n", current->comm, current->pid, cpu);
 }
 
 static void __sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
-    // pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
-    //          current->comm, current->pid, current->thread_info.cpu,
-    //          next->comm, next->pid, next->thread_info.cpu);
+    pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
+             current->comm, current->pid, current->thread_info.cpu,
+             next->comm, next->pid, next->thread_info.cpu);
 }
 
 static bool is_preempt_notifier_registered(struct task_struct *p)
@@ -76,46 +75,50 @@ static void init_preempt_notifier(struct task_struct *p)
     ops->sched_in = __sched_in;
     ops->sched_out = __sched_out;
 
+    // rcu_read_lock();
     INIT_HLIST_HEAD(&p->preempt_notifiers);
     preempt_notifier_init(notifier, ops);
     preempt_notifier_inc();
     hlist_add_head(&notifier->link, &p->preempt_notifiers);
+    // rcu_read_unlock();
+
     pr_alert("preempt_notifier registered: %s(%d)\n", p->comm, p->pid);
 }
 
 static int scan_preempt_registration(void *data)
 {
-    pr_alert("%s() called.", __FUNCTION__);
-    struct task_struct *p = (struct task_struct *)data;
+    pr_alert("%s() called\n", __FUNCTION__);
     while (!kthread_should_stop())
     {
-        rcu_read_lock();
-        struct task_struct *t = p;
+        // rcu_read_lock();
+        volatile struct task_struct *p = (struct task_struct *)data;
+        volatile struct task_struct *t = p;
+        init_preempt_notifier(p);
         while_each_thread(p, t)
         {
             init_preempt_notifier(t); // all other threads (t) other than parent (p)
         }
 
         // MAJOR WARNING: HAS TO FINISH THIS UNLOCK CALL, or probable SOFT-LOCKUP!
-        rcu_read_unlock();
+        // rcu_read_unlock();
 
         if (kthread_should_stop())
         {
             break;
         }
-        long preempt_running = schedule_timeout_interruptible(msecs_to_jiffies(1000));
+        long preempt_running = schedule_timeout_uninterruptible(msecs_to_jiffies(1000));
     }
     return 0;
 }
 
-static inline void start_preempt_scan_thread(struct device *dev, struct task_struct *p)
+static void start_preempt_scan_thread(struct device *dev, struct task_struct *p)
 {
     energy_t *data = dev_get_drvdata(dev);
     data->preempt_runner = kthread_run(scan_preempt_registration, p, PREEMPT_SCAN_THREAD, dev_name(dev));
 }
+
 static void init_preempt_notifiers(struct device *dev, struct task_struct *p)
 {
-
     if (status == RUNNING)
     {
         status = COMPLETE;
@@ -124,7 +127,6 @@ static void init_preempt_notifiers(struct device *dev, struct task_struct *p)
 
     if (status == NOT_STARTED)
     {
-        init_preempt_notifier(p);
         start_preempt_scan_thread(dev, p);
 
         // rcu_read_lock();
@@ -159,11 +161,15 @@ static void release_preempt_notifier(struct task_struct *p)
     }
 }
 
-static inline void stop_preempt_scan_thread(struct device *dev, struct task_struct *p)
+static void stop_preempt_scan_thread(struct device *dev, struct task_struct *p)
 {
-    pr_alert("%s() called.", __FUNCTION__);
+    pr_alert("%s() called\n", __FUNCTION__);
     energy_t *data = dev_get_drvdata(dev);
-    kthread_stop(data->preempt_runner);
+
+    if (data && data->preempt_runner)
+    {
+        kthread_stop(data->preempt_runner);
+    }
 }
 
 static void release_preempt_notifiers(struct device *dev, struct task_struct *p)
@@ -181,7 +187,6 @@ static void release_preempt_notifiers(struct device *dev, struct task_struct *p)
         stop_preempt_scan_thread(dev, p);
         status = NOT_STARTED;
     }
-    
 }
 
 #endif /* _PREEMPT_H */

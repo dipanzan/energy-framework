@@ -76,8 +76,6 @@ MODULE_PARM_DESC(pid, "[pid] is the PID to to attach to.");
 MODULE_PARM_DESC(cpu, "[cpu] is the target CPU for energy measurement.");
 MODULE_PARM_DESC(mode, "[mode] is the backend mode for energy data source. [0]- MSR, [1]- perf");
 
-
-
 static void set_energy_unit(energy_t *data)
 {
 	u64 energy_unit;
@@ -240,7 +238,7 @@ static unsigned int find_sw_thread_num(unsigned int cpu)
 // HELLO MARKER
 static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
-	rcu_read_lock();
+
 	struct task_struct *p = current;
 	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
 	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
@@ -248,8 +246,6 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	// find_threads(p);
 	init_preempt_notifiers(dev, p);
 	release_preempt_notifiers(dev, p);
-
-	rcu_read_unlock();
 
 	energy_t *data = dev_get_drvdata(dev);
 	unsigned int cpu;
@@ -526,7 +522,6 @@ static int alloc_energy_sensor(struct device *dev)
 	// preempt support WIP
 	// ret |= alloc_preempt_notifiers(dev);
 	// ret |= init_preempt_callbacks(dev);
-	
 
 	return ret;
 }
@@ -647,6 +642,11 @@ static int energy_remove(struct platform_device *pd)
 	{
 		ret |= kthread_stop(data->wrap_accumulate);
 	}
+
+	// if (data && data->preempt_runner)
+	// {
+	// 	ret |= kthread_stop(data->preempt_runner);
+	// }
 
 	ret |= release_perf_counters(dev);
 	return ret;

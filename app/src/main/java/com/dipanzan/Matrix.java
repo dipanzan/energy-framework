@@ -36,14 +36,12 @@ public class Matrix {
         List<Thread> threads = new ArrayList<>(NUM_THEADS);
         for (int i = 0; i < NUM_THEADS; i++) {
             threads.add(new Thread(this::load));
+            threads.get(i).start();
         }
-        threads.forEach(Thread::start);
 
         for (int i = 0; i < TIME; i++) {
             try {
-                Thread.sleep(2000);
-                threads.add(new Thread(this::load));
-                threads.forEach(Thread::start);
+                Thread.sleep(1000);
             } catch (InterruptedException e) {
                 //
             }
