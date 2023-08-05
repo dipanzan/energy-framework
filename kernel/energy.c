@@ -246,8 +246,8 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
 
 	// find_threads(p);
-	init_preempt_notifiers(p);
-	release_preempt_notifiers(p);
+	init_preempt_notifiers(dev, p);
+	release_preempt_notifiers(dev, p);
 
 	rcu_read_unlock();
 
@@ -728,8 +728,8 @@ static int __init energy_init(void)
 	lookup_vars();
 	lookup_functions();
 
-	__EXPERIMENT_enable_perf_sched();
-	fh_install_hook(&fh);
+	// __EXPERIMENT_enable_perf_sched();
+	// fh_install_hook(&fh);
 
 	// setup_ftrace_filter();
 	// int ftrace = register_ftrace_function(&f_ops);
@@ -745,10 +745,10 @@ static void __exit energy_exit(void)
 	platform_device_unregister(cpu_energy_pd);
 	platform_driver_unregister(&energy_driver);
 
-	__EXPERIMENT_disable_perf_sched();
+	// __EXPERIMENT_disable_perf_sched();
 	release_kprobe();
 
-	fh_remove_hook(&fh);
+	// fh_remove_hook(&fh);
 	// int ftrace = unregister_ftrace_function(&f_ops);
 	// pr_alert("%s(): ret: %d\n", "unregister_ftrace_function", ftrace);
 

@@ -31,7 +31,7 @@ typedef struct energy_data
     struct hwmon_channel_info energy_info;
     const struct hwmon_channel_info *info[2];
     struct hwmon_chip_info chip;
-    struct task_struct *wrap_accumulate;
+    struct task_struct *wrap_accumulate, *preempt_runner;
 
     /* Lock around the accumulator */
     struct mutex lock;

@@ -41,7 +41,9 @@ public class Matrix {
 
         for (int i = 0; i < TIME; i++) {
             try {
-                Thread.sleep(1000);
+                Thread.sleep(2000);
+                threads.add(new Thread(this::load));
+                threads.forEach(Thread::start);
             } catch (InterruptedException e) {
                 //
             }

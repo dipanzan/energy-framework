@@ -43,7 +43,19 @@ struct ftrace_hook
     struct ftrace_ops ops;
 };
 
-struct ftrace_hook fh = HOOK("__perf_event_task_sched_in", &__perf_event_task_sched_in_real, __perf_event_task_sched_in_fh);
+
+static void (*free_task_real)(struct task_struct *tsk);
+
+static void free_task_fh(struct task_struct *tsk) 
+{
+    free_task_real(tsk);
+    
+    pr_alert("%s() called.\n");
+}
+
+
+// struct ftrace_hook fh = HOOK("__perf_event_task_sched_in", &__perf_event_task_sched_in_real, __perf_event_task_sched_in_fh);
+struct ftrace_hook fh = HOOK("free_task", &free_task_real, free_task_fh);
 
 static void notrace fh_ftrace_thunk(unsigned long ip, unsigned long parent_ip, struct ftrace_ops *ops, struct ftrace_regs *regs)
 {
