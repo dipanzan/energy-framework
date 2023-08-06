@@ -488,6 +488,7 @@ static int init_perf_backend(struct device *dev)
 
 		ret |= alloc_perf_event_attrs(dev);
 		ret |= alloc_perf_event_kernel_counters(dev);
+		ret |= alloc_perf_energy_values(dev);
 		ret |= enable_perf_events(dev);
 	}
 	return ret;

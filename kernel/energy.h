@@ -16,6 +16,7 @@ typedef struct perf_data
 {
     struct perf_event_attr *attr;
     struct perf_event *event;
+    long long *old, *new, *reading;
 } perf_t;
 
 struct preempt_notifier_data;

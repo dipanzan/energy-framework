@@ -70,6 +70,30 @@ static unsigned int get_perf_cpu_count(void)
 	return get_core_cpu_count() * 2;
 }
 
+static int alloc_perf_energy_values(struct device *dev)
+{
+	energy_t *data = dev_get_drvdata(dev);
+	long long *old = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
+	long long *new = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
+	long long *reading = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
+	if (!old && new && reading)
+	{
+		return -ENOMEM;
+	}
+	data->perf->old = old;
+	data->perf->new = new;
+	data->perf->reading = reading;
+
+	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+	{
+		data->perf->old[cpu] = 0;
+		data->perf->new[cpu] = 0;
+		data->perf->reading[cpu] = 0;
+	}
+	return 0;
+}
+
+
 static int perf_alloc(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);

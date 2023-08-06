@@ -90,6 +90,8 @@ static void cancel_threads(int nr_threads)
 
 int main(int argc, char *argv[])
 {
+    double hello = 1902348140544 * PERF_CONSTANT;
+    printf("HELOOOOO: %fJ\n", hello);
     int pid = getpid();
     printf("pid: %d\n", pid);
 

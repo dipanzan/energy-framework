@@ -27,6 +27,52 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
     pr_alert("%s() called for pid: %d on cpu: %d\n", __FUNCTION__, pid, cpu);
 }
 
+static void ____sched_in(struct preempt_notifier *notifier, int cpu)
+{
+    preempt_disable();
+
+    struct device *dev = &cpu_energy_pd->dev;
+    energy_t *data = dev_get_drvdata(dev);
+    struct perf_event *event = data->perf[cpu].event;
+    pr_alert("IN: [%s (PID: %d, CPU: %d current CPU: %d)]\n", current->comm, current->pid, cpu, current->thread_info.cpu);
+
+    u64 enabled, running;
+    data->perf->old[cpu] = perf_event_read_value(event, &enabled, &running);
+    pr_alert("IN: data->perf->old[%d] = %ld\n", cpu, data->perf->old[cpu]);
+
+
+    preempt_enable();
+}
+
+static void ____sched_out(struct preempt_notifier *notifier, struct task_struct *next)
+{
+    preempt_disable();
+    struct device *dev = &cpu_energy_pd->dev;
+    energy_t *data = dev_get_drvdata(dev);
+
+    volatile int cpu = current->thread_info.cpu;
+    struct perf_event *event = data->perf[cpu].event;
+
+    pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
+                 current->comm, current->pid, current->thread_info.cpu,
+                 next->comm, next->pid, next->thread_info.cpu);
+
+
+
+    u64 enabled, running;
+
+    data->perf->new[cpu] = perf_event_read_value(event, &enabled, &running);
+    data->perf->reading[cpu] += (data->perf->new[cpu] - data->perf->old[cpu]);
+    pr_alert("OUT: data->perf->reading[%d] = %ld\n", cpu, data->perf->reading[cpu]);
+    preempt_enable();
+
+    
+
+    // disable_irq();
+    // value = perf_event_read_value(event, &enabled, &running);
+    // enable_irq();
+}
+
 static void __sched_in(struct preempt_notifier *notifier, int cpu)
 {
     struct device *dev = &cpu_energy_pd->dev;
@@ -34,7 +80,6 @@ static void __sched_in(struct preempt_notifier *notifier, int cpu)
     struct perf_event *event = data->perf[cpu].event;
     u64 value, enabled, running;
 
-    
     // disable_irq();
     // value = perf_event_read_value(event, &enabled, &running);
     // enable_irq();
@@ -48,8 +93,8 @@ static void __sched_out(struct preempt_notifier *notifier, struct task_struct *n
 {
     preempt_disable();
     trace_printk("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
-             current->comm, current->pid, current->thread_info.cpu,
-             next->comm, next->pid, next->thread_info.cpu);
+                 current->comm, current->pid, current->thread_info.cpu,
+                 next->comm, next->pid, next->thread_info.cpu);
     preempt_enable();
 
     struct device *dev = &cpu_energy_pd->dev;
@@ -94,8 +139,8 @@ static void init_preempt_notifier(struct task_struct *p)
         pr_alert("preempt_ops alloc failed: %s(%d)\n", p->comm, p->pid);
         return;
     }
-    ops->sched_in = __sched_in;
-    ops->sched_out = __sched_out;
+    ops->sched_in = ____sched_in;
+    ops->sched_out = ____sched_out;
 
     get_task_struct(p);
     // rcu_read_lock();
@@ -122,6 +167,8 @@ static int scan_preempt_registration(void *data)
         {
 
             init_preempt_notifier(t); // all other threads (t) other than parent (p)
+            struct task_struct *temp = container_of(&t->preempt_notifiers, struct task_struct, preempt_notifiers);
+            temp ? pr_alert("%s(%d)\n", temp->comm, temp->pid) : pr_alert("NOT VALID!\n");
         }
 
         // MAJOR WARNING: HAS TO FINISH THIS UNLOCK CALL, or probable SOFT-LOCKUP!
@@ -204,6 +251,8 @@ static void release_preempt_notifiers(struct device *dev, struct task_struct *p)
 {
     if (status == COMPLETE)
     {
+        energy_t *data = dev_get_drvdata(dev);
+        pr_alert("READING: %ld\n", data->perf->reading[current->thread_info.cpu]);
         stop_preempt_scan_thread(dev, p);
 
         rcu_read_lock();
