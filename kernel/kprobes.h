@@ -18,25 +18,38 @@ static int init_kallsyms(void)
     }
     else
     {
-        pr_alert("%s(): init failed.\n", KALLSYMS_LOOKUP_NAME);
+        pr_alert("%s(): init failed. :(\n", KALLSYMS_LOOKUP_NAME);
         return -1;
     }
 }
 
-static int init_kprobe(void)
+static int release_kprobe(void)
+{
+    unregister_kprobe(&kp);
+    return 0;
+}
+
+static int init_kprobe(struct device *dev)
 {
     int ret = 0;
     ret |= register_kprobe(&kp);
-    ret |= init_kallsyms();
 
-    pr_alert("KPROBES init complete! :)\n");
-    msleep(INIT);
+    if (ret)
+    {
+        pr_alert("%s(): init failed. :(\n", __FUNCTION__);
+        return ret;
+    }
+    ret |= init_kallsyms();
+    if (ret)
+    {
+        release_kprobe();
+        return ret;
+    }
+
+    pr_alert("%s(): init complete! :)\n", __FUNCTION__);
     return ret;
 }
 
-static void release_kprobe(void)
-{
-    unregister_kprobe(&kp);
-}
+
 
 #endif /* _KPROBES_H */

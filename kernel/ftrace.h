@@ -114,8 +114,7 @@ static int fh_install_hook(struct ftrace_hook *hook)
         return err;
     }
 
-    pr_alert("FTRACE init complete! :)\n");
-    msleep(INIT);
+    pr_alert("%s(): ftrace init complete! :)\n");
     return 0;
 }
 

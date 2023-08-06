@@ -514,6 +514,7 @@ static int alloc_energy_sensor(struct device *dev)
 	ret |= alloc_cpu_socket(dev);
 	ret |= init_msr_backend(dev);
 	ret |= init_perf_backend(dev);
+	ret |= init_kprobe(dev);
 
 	// preempt support WIP
 	// ret |= alloc_preempt_notifiers(dev);
@@ -644,6 +645,7 @@ static int energy_remove(struct platform_device *pd)
 	// 	ret |= kthread_stop(data->preempt_runner);
 	// }
 
+	ret |= release_kprobe();
 	ret |= release_perf_counters(dev);
 	return ret;
 }
@@ -677,8 +679,6 @@ MODULE_DEVICE_TABLE(x86cpu, amd_ryzen_cpu_ids);
 
 static int __init energy_init(void)
 {
-	trace_printk("trace-printk init\n");
-	int ret;
 
 	dump_cpu_info();
 	// check if boot-cpu matches with current online-cpu
@@ -687,6 +687,7 @@ static int __init energy_init(void)
 		return -ENODEV;
 	}
 
+	int ret;
 	ret = platform_driver_register(&energy_driver);
 	if (ret)
 	{
@@ -708,16 +709,10 @@ static int __init energy_init(void)
 		return ret;
 	}
 
-	ret = init_kprobe();
-	if (ret)
-	{
-		release_kprobe();
-		return ret;
-	}
-
-	// ret = init_preempt_notifier(cpu_energy_pd);
+	// ret = init_kprobe();
 	// if (ret)
 	// {
+	// 	release_kprobe();
 	// 	return ret;
 	// }
 
@@ -726,10 +721,6 @@ static int __init energy_init(void)
 
 	// __EXPERIMENT_enable_perf_sched();
 	// fh_install_hook(&fh);
-
-	// setup_ftrace_filter();
-	// int ftrace = register_ftrace_function(&f_ops);
-	// pr_alert("%s(): ret: %d\n", "register_ftrace_function", ftrace);
 
 	pr_alert("energy module loaded!\n");
 	pr_alert("[WARNING]: YOU ARE IN KERNEL MODE - PREEMPTION DISABLED YOU HAVE BEEN WARNED! :#\n");
@@ -745,9 +736,6 @@ static void __exit energy_exit(void)
 	release_kprobe();
 
 	// fh_remove_hook(&fh);
-	// int ftrace = unregister_ftrace_function(&f_ops);
-	// pr_alert("%s(): ret: %d\n", "unregister_ftrace_function", ftrace);
-
 	pr_alert("energy module unloaded\n");
 	pr_alert("[WARNING]: EXITING KERNEL MODE - PREEMPTION ENABLED, SWITCHING TO USER MODE! :)\n");
 }

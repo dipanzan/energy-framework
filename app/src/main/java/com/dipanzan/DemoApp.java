@@ -18,23 +18,47 @@ public class DemoApp {
         int time2 = new Scanner(System.in).nextInt();
         System.out.println(time);
 //        Method.execute(() -> new Matrix(threads, time2).run2());
-        hello(time2);
+        HELLO_BROCK(time2);
+    }
+
+    private static boolean run = false;
+
+    private static void inc(int time) {
+
+        for (int i = 0; i < time; i++) {
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
+
+            }
+        }
+        run = false;
+
     }
 
     @Energy
-    private static void hello(int times)
-    {
+    private static void HELLO_BROCK(int time) {
+        Thread t = new Thread(() -> inc(time));
+        t.start();
+        run = true;
+        while (run) {
+            System.out.print("");
+        }
+        t.stop();
+    }
+
+    @Energy
+    private static void hello(int times) {
         for (int i = 0; i < times; i++) {
-            System.out.println("hello!");
+            System.out.print("");
         }
     }
-    private static void sleep(int n)
-    {
+
+    private static void sleep(int n) {
         try {
             Thread.sleep(n);
 
-        } catch (Exception e)
-        {
+        } catch (Exception e) {
 
         }
     }
