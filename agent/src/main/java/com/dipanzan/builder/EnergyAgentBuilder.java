@@ -1,6 +1,6 @@
 package com.dipanzan.builder;
 
-import com.dipanzan.advice.TimerAdvice;
+import com.dipanzan.advice.EnergyAdvice;
 import com.dipanzan.type.Types;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.AgentBuilder.RedefinitionStrategy;
@@ -21,14 +21,14 @@ public class EnergyAgentBuilder {
         new AgentBuilder.Default()
                 .disableClassFormatChanges()
                 .with(RedefinitionStrategy.RETRANSFORMATION)
-                .with(RedefinitionStrategy.Listener.StreamWriting.toSystemError())
+                .with(RedefinitionStrategy.Listener.StreamWriting.toSystemOut())
                 .with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly())
-                .with(AgentBuilder.InstallationListener.StreamWriting.toSystemError())
+                .with(AgentBuilder.InstallationListener.StreamWriting.toSystemOut())
                 .ignore(none())
                 .ignore(Types.IGNORED)
                 .type(any())
                 .transform((builder, type, classLoader, module, protectionDomain) ->
-                        builder.visit(Advice.to(TimerAdvice.class).on(Types.TARGET_METHODS))
+                        builder.visit(Advice.to(EnergyAdvice.class).on(Types.TARGET_METHODS))
                 )
                 .installOn(inst);
     }

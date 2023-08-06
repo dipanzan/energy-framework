@@ -1,7 +1,6 @@
 package com.dipanzan.agent;
 
 import com.dipanzan.advice.EnergyAdvice;
-import com.dipanzan.advice.TimerAdvice;
 import com.dipanzan.util.TryCatch;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
@@ -89,7 +88,7 @@ public class Agent {
                 .type(ElementMatchers.any())
 //                .transform(new AgentBuilder.Transformer.ForAdvice().advice())
                 .transform((builder, typeDescription, classLoader, javaModule, protectionDomain) ->
-                        builder.visit(Advice.to(TimerAdvice.class).on(ElementMatchers.isMethod())));
+                        builder.visit(Advice.to(EnergyAdvice.class).on(ElementMatchers.isMethod())));
     }
 
     private static Map<TypeDescription, Class<?>> injectToBootloader(Class<?> clazz) {
@@ -121,7 +120,7 @@ public class Agent {
                 .with(AgentBuilder.TypeStrategy.Default.REDEFINE)
                 .type(ElementMatchers.any())
                 .transform((builder, typeDescription, classLoader, javaModule, protectionDomain) ->
-                        builder.visit(TimerAdvice.getAdvice().on(ElementMatchers.isMethod()))
+                        builder.visit(EnergyAdvice.getAdvice().on(ElementMatchers.isMethod()))
                 );
     }
 

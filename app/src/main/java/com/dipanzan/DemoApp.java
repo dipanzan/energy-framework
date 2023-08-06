@@ -1,5 +1,7 @@
 package com.dipanzan;
 
+import com.dipanzan.annotation.Energy;
+
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Scanner;
@@ -15,9 +17,17 @@ public class DemoApp {
         System.out.print("Time: ");
         int time2 = new Scanner(System.in).nextInt();
         System.out.println(time);
-        Method.execute(() -> new Matrix(threads, time2).run2());
+//        Method.execute(() -> new Matrix(threads, time2).run2());
+        hello(time2);
     }
 
+    @Energy
+    private static void hello(int times)
+    {
+        for (int i = 0; i < times; i++) {
+            System.out.println("hello!");
+        }
+    }
     private static void sleep(int n)
     {
         try {

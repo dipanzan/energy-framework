@@ -6,4 +6,3 @@ com/dipanzan/util/TryCatch.class
 com/dipanzan/advice/EnergyAdvice.class
 com/dipanzan/annotation/Energy.class
 com/dipanzan/util/TryCatch$MethodThrowingException.class
-com/dipanzan/advice/TimerAdvice.class
