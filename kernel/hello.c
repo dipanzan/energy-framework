@@ -29,7 +29,7 @@ static unsigned long long read_energy()
         return -1;
     }
 
-    sprintf(str, HWMON_PATH, 1);
+    sprintf(str, HWMON_PATH, 17);
     FILE *file = fopen(str, "r");
     char energy_reading[50];
     fgets(energy_reading, 50, file);
@@ -90,8 +90,6 @@ static void cancel_threads(int nr_threads)
 
 int main(int argc, char *argv[])
 {
-    double hello = 1902348140544 * PERF_CONSTANT;
-    printf("HELOOOOO: %fJ\n", hello);
     int pid = getpid();
     printf("pid: %d\n", pid);
 
@@ -109,7 +107,7 @@ int main(int argc, char *argv[])
 
     unsigned long long after = read_energy();
 
-    double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
+    double result = (after - before) / pow(10, 6) /* * PERF_CONSTANT */;
     printf("=====================C======================\n");
     printf("energy consumed: %fJ\n", result);
     printf("=====================C======================\n");

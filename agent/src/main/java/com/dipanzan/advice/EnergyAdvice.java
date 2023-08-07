@@ -17,27 +17,50 @@ public class EnergyAdvice {
         return Advice.to(EnergyAdvice.class);
     }
 
-    private static long before = 0;
-    private static long after = 0;
+    public static void printEnergyConsumed(Method method, long before, long after) {
+        double result = (after - before) / Math.pow(10, 6);
+//        double result = (after - before) * 2.3283064365386962890625e-10;
+        System.out.println("=====================JAVA======================");
+        System.out.println(method.getName() + "(): energy consumed: " + result + "J");
+        System.out.println("=====================JAVA======================");
+    }
+
+    public static long readEnergy(int core) throws Exception {
+        String energyPath = "/sys/class/hwmon/hwmon5/energy" + core + "_input";
+        Scanner sc = new Scanner((new File(energyPath)));
+        return sc.nextLong();
+
+    }
 
     @Advice.OnMethodEnter(suppress = Throwable.class)
     public static long enter(@Advice.Origin Method method,
                              @Advice.AllArguments(typing = DYNAMIC) Object[] args) throws Exception {
-        String energyPath = "/sys/class/hwmon/hwmon5/energy1" + "_input";
-        Scanner sc = new Scanner((new File(energyPath)));
-        return sc.nextLong();
+        return readEnergy(17);
     }
 
     @Advice.OnMethodExit(suppress = Throwable.class, onThrowable = Throwable.class)
     public static void exit(@Advice.Origin Method method, @Advice.Enter long before, @Advice.Origin String origin) throws Exception {
-        String energyPath = "/sys/class/hwmon/hwmon5/energy1" + "_input";
-        Scanner sc = new Scanner((new File(energyPath)));
-        long after = sc.nextLong();
-        double consumed = (after - before) * 2.3283064365386962890625e-10;
-        System.out.println("=====================JAVA======================");
-        System.out.println(method.getName() + "(): " + " energy consumed: " + consumed + "J");
-        System.out.println("=====================JAVA======================");
+        long after = readEnergy(17);
+        printEnergyConsumed(method, before, after);
     }
+
+//    @Advice.OnMethodEnter(suppress = Throwable.class)
+//    public static long enter2(@Advice.Origin Method method,
+//                             @Advice.AllArguments(typing = DYNAMIC) Object[] args) throws Exception {
+//        String energyPath = "/sys/class/hwmon/hwmon5/energy1" + "_input";
+//        Scanner sc = new Scanner((new File(energyPath)));
+//        return sc.nextLong();
+//    }
+//    @Advice.OnMethodExit(suppress = Throwable.class, onThrowable = Throwable.class)
+//    public static void exit2(@Advice.Origin Method method, @Advice.Enter long before, @Advice.Origin String origin) throws Exception {
+//        String energyPath = "/sys/class/hwmon/hwmon5/energy1" + "_input";
+//        Scanner sc = new Scanner((new File(energyPath)));
+//        long after = sc.nextLong();
+//        double consumed = (after - before) * 2.3283064365386962890625e-10;
+//        System.out.println("=====================JAVA======================");
+//        System.out.println(method.getName() + "(): " + " energy consumed: " + consumed + "J");
+//        System.out.println("=====================JAVA======================");
+//    }
 
     private String getEnergy(int core) {
         String energyPath = "/sys/devices/platform/amd_energy.0/hwmon/hwmon5/energy" + core + "_input";

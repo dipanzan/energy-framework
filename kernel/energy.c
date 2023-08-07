@@ -43,6 +43,7 @@
 
 /* 	do not move header files above the pr_fmt format statements!
 	otherwise the pr_fmt() family of functions don't work.
+	ACTUALLY: DO NOT MOVE THE HEADER FILE ORDER, YOU'lL MESS IT UP!
 */
 
 // WARNING - multiple threads will access this pointer!!!
@@ -235,6 +236,36 @@ static unsigned int find_sw_thread_num(unsigned int cpu)
 	return cpu * 2;
 }
 
+static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
+{
+	struct task_struct *p = current;
+	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
+	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
+
+	// find_threads(p);
+	init_preempt_notifiers(dev, p);
+	release_preempt_notifiers(dev, p);
+
+	energy_t *data = dev_get_drvdata(dev);
+	unsigned int cpu;
+
+	if (channel >= data->nr_cpus)
+	{
+		cpu = cpumask_first_and(cpu_online_mask, cpumask_of_node(channel - data->nr_cpus));
+		add_delta_pkg(data, channel, cpu, val);
+	}
+	else
+	{
+		cpu = channel;
+		if (!cpu_online(cpu))
+		{
+			return -ENODEV;
+		}
+		add_delta_core(data, channel, cpu, val);
+	}
+	return 0;
+}
+
 // HELLO MARKER
 static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
@@ -264,7 +295,6 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	mutex_lock(&data->lock);
 	*val = value;
 	mutex_unlock(&data->lock);
-
 	return 0;
 }
 
@@ -302,36 +332,6 @@ static int read_perf_energy_data2(struct device *dev, enum hwmon_sensor_types ty
 	*val = value;
 	mutex_unlock(&data->lock);
 
-	return 0;
-}
-
-static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
-{
-	energy_t *data = dev_get_drvdata(dev);
-	int cpu;
-
-	if (channel >= data->nr_cpus)
-	{
-#if DEBUG
-		pr_alert("%s(): SOCKET: %d\n", __FUNCTION__, channel);
-#endif
-
-		cpu = cpumask_first_and(cpu_online_mask, cpumask_of_node(channel - data->nr_cpus));
-		add_delta_pkg(data, channel, cpu, val);
-	}
-	else
-	{
-#if DEBUG
-		pr_alert("%s(): CPU: %d\n", __FUNCTION__, channel);
-#endif
-
-		cpu = channel;
-		if (!cpu_online(cpu))
-		{
-			return -ENODEV;
-		}
-		add_delta_core(data, channel, cpu, val);
-	}
 	return 0;
 }
 

@@ -33,6 +33,7 @@ public class Matrix {
 //        printEnergyConsumed(1, before, after);
 
     }
+
     public void run2() {
         List<Thread> threads = new ArrayList<>(NUM_THEADS);
         for (int i = 0; i < NUM_THEADS; i++) {

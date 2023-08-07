@@ -1,7 +1,6 @@
 /home/dipanzan/IdeaProjects/energy-framework/agent/src/main/java/com/dipanzan/type/Types.java
 /home/dipanzan/IdeaProjects/energy-framework/agent/src/main/java/com/dipanzan/util/TryCatch.java
 /home/dipanzan/IdeaProjects/energy-framework/agent/src/main/java/com/dipanzan/agent/Agent.java
-/home/dipanzan/IdeaProjects/energy-framework/agent/src/main/java/com/dipanzan/advice/TimerAdvice.java
 /home/dipanzan/IdeaProjects/energy-framework/agent/src/main/java/com/dipanzan/builder/EnergyAgentBuilder.java
 /home/dipanzan/IdeaProjects/energy-framework/agent/src/main/java/com/dipanzan/advice/EnergyAdvice.java
 /home/dipanzan/IdeaProjects/energy-framework/agent/src/main/java/com/dipanzan/annotation/Energy.java
