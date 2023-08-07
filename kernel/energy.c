@@ -148,21 +148,21 @@ static void read_accumulate(energy_t *data)
 
 static void add_delta_core(energy_t *data, int channel, int cpu, long *val)
 {
-	struct energy_accumulator *accum;
+	struct energy_accumulator *accumulator;
 
 	mutex_lock(&data->lock);
 	u64 value = read_msr_on_cpu(cpu, ENERGY_CORE_MSR);
 
 	if (!data->do_not_accum)
 	{
-		accum = &data->accums[channel];
-		if (value >= accum->prev_value)
+		accumulator = &data->accumulators[channel];
+		if (value >= accumulator->prev_value)
 		{
-			value += accum->energy_ctr - accum->prev_value;
+			value += accumulator->energy_ctr - accumulator->prev_value;
 		}
 		else
 		{
-			value += UINT_MAX - accum->prev_value + accum->energy_ctr;
+			value += UINT_MAX - accumulator->prev_value + accumulator->energy_ctr;
 		}
 	}
 	energy_consumed_ujoules(data, value, val);
@@ -171,16 +171,16 @@ static void add_delta_core(energy_t *data, int channel, int cpu, long *val)
 
 static void handle_ctr_overflow(energy_t *data, int channel, u64 value)
 {
-	energy_accum_t *accum = &data->accums[channel];
-	if (value >= accum->prev_value)
+	energy_accum_t *accumulator = &data->accumulators[channel];
+	if (value >= accumulator->prev_value)
 	{
-		accum->energy_ctr += value - accum->prev_value;
+		accumulator->energy_ctr += value - accumulator->prev_value;
 	}
 	else
 	{
-		accum->energy_ctr += UINT_MAX - accum->prev_value + value;
+		accumulator->energy_ctr += UINT_MAX - accumulator->prev_value + value;
 	}
-	accum->prev_value = value;
+	accumulator->prev_value = value;
 }
 
 /* Energy consumed = (1/(2^ESU) * RAW * 1000000UL) μJoules */
@@ -196,7 +196,7 @@ static void add_delta_pkg(energy_t *data, int channel, int cpu, long *val)
 
 	if (!data->do_not_accum)
 	{
-		struct energy_accumulator *accum = &data->accums[channel];
+		struct energy_accumulator *accum = &data->accumulators[channel];
 		if (value >= accum->prev_value)
 		{
 			value += accum->energy_ctr - accum->prev_value;
@@ -295,6 +295,7 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	mutex_lock(&data->lock);
 	*val = value;
 	mutex_unlock(&data->lock);
+
 	return 0;
 }
 
@@ -422,12 +423,12 @@ static int alloc_socket_config(struct device *dev)
 static int alloc_sensor_accumulator(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);
-	energy_accum_t *accums = devm_kcalloc(dev, data->nr_cpus + data->nr_socks, sizeof(energy_accum_t), GFP_KERNEL);
-	if (!accums)
+	energy_accum_t *accumulators = devm_kcalloc(dev, data->nr_cpus + data->nr_socks, sizeof(energy_accum_t), GFP_KERNEL);
+	if (!accumulators)
 	{
 		return -ENOMEM;
 	}
-	data->accums = accums;
+	data->accumulators = accumulators;
 	return 0;
 }
 

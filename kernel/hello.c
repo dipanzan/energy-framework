@@ -29,7 +29,7 @@ static unsigned long long read_energy()
         return -1;
     }
 
-    sprintf(str, HWMON_PATH, 17);
+    sprintf(str, HWMON_PATH, 1);
     FILE *file = fopen(str, "r");
     char energy_reading[50];
     fgets(energy_reading, 50, file);
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 
     unsigned long long after = read_energy();
 
-    double result = (after - before) / pow(10, 6) /* * PERF_CONSTANT */;
+    double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
     printf("=====================C======================\n");
     printf("energy consumed: %fJ\n", result);
     printf("=====================C======================\n");

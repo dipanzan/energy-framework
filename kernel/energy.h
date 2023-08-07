@@ -17,6 +17,7 @@ typedef struct perf_data
     struct perf_event_attr *attr;
     struct perf_event *event;
     long long *old, *new, *reading;
+    long long old_value, new_value, reading_value;
 } perf_t;
 
 struct preempt_notifier_data;
@@ -37,7 +38,7 @@ typedef struct energy_data
     /* Lock around the accumulator */
     struct mutex lock;
     /* An accumulator for each core and socket */
-    energy_accum_t *accums;
+    energy_accum_t *accumulators;
     unsigned int timeout_ms;
 
     int energy_unit;
@@ -58,7 +59,6 @@ typedef struct energy_data
      */
     // struct perf_event *events[NR_CPUS_PERF];
 
-    struct preempt_notifier *notifiers;
     perf_t *perf;
 
 } energy_t;

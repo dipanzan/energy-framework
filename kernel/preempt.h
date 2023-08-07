@@ -8,10 +8,10 @@ enum STATUS
 {
     NOT_STARTED = 0,
     RUNNING = 1,
-    COMPLETE = 2
+    COMPLETE = 2,
+    READ_ERROR = 3
 };
 
-// WARNING: marking this volatile for multi-threaded access to the "status" variable
 static volatile enum STATUS status = NOT_STARTED;
 
 static const struct preempt_ops p_ops = {
@@ -31,13 +31,17 @@ static void ____sched_in(struct preempt_notifier *notifier, int cpu)
 {
     // preempt_disable();
 
-    // struct device *dev = &cpu_energy_pd->dev;
-    // energy_t *data = dev_get_drvdata(dev);
-    // struct perf_event *event = data->perf[cpu].event;
-    pr_alert("IN: [%s (PID: %d, CPU: %d current CPU: %d)]\n", current->comm, current->pid, cpu, current->thread_info.cpu);
+    // pr_alert("IN: [%s (PID: %d, thread_info CPU: %d, notifier CPU: %d, smp CPU: %d)]\n",
+    //     current->comm, current->pid, current->thread_info.cpu,
+    //     cpu, smp_processor_id());
 
-    // u64 enabled, running;
-    // data->perf->old[cpu] = perf_event_read_value(event, &enabled, &running);
+    struct device *dev = &cpu_energy_pd->dev;
+    energy_t *data = dev_get_drvdata(dev);
+    struct perf_event *event = data->perf[0].event;
+
+    u64 enabled, running;
+    data->perf->new_value = perf_event_read_value(event, &enabled, &running);
+    data->perf->reading_value += (data->perf->new_value - data->perf->old_value);
     // pr_alert("IN: data->perf->old[%d] = %ld\n", cpu, data->perf->old[cpu]);
 
     // preempt_enable();
@@ -46,26 +50,21 @@ static void ____sched_in(struct preempt_notifier *notifier, int cpu)
 static void ____sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
     // preempt_disable();
-    // struct device *dev = &cpu_energy_pd->dev;
-    // energy_t *data = dev_get_drvdata(dev);
+    // pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
+    //          current->comm, current->pid, current->thread_info.cpu,
+    //          next->comm, next->pid, next->thread_info.cpu);
 
-    // volatile int cpu = current->thread_info.cpu;
-    // struct perf_event *event = data->perf[cpu].event;
+    struct device *dev = &cpu_energy_pd->dev;
+    energy_t *data = dev_get_drvdata(dev);
+    volatile int cpu = current->thread_info.cpu;
+    struct perf_event *event = data->perf[0].event;
 
-    pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
-             current->comm, current->pid, current->thread_info.cpu,
-             next->comm, next->pid, next->thread_info.cpu);
+    u64 enabled, running;
+    
+    data->perf->old_value = perf_event_read_value(event, &enabled, &running);
 
-    // u64 enabled, running;
-
-    // data->perf->new[cpu] = perf_event_read_value(event, &enabled, &running);
-    // data->perf->reading[cpu] += (data->perf->new[cpu] - data->perf->old[cpu]);
     // pr_alert("OUT: data->perf->reading[%d] = %ld\n", cpu, data->perf->reading[cpu]);
     // preempt_enable();
-
-    // disable_irq();
-    // value = perf_event_read_value(event, &enabled, &running);
-    // enable_irq();
 }
 
 static void __sched_in(struct preempt_notifier *notifier, int cpu)
@@ -217,7 +216,7 @@ static void release_preempt_notifier(volatile struct task_struct *p)
         pr_alert("TASK DEAD!\n");
         return;
     }
-    
+
     if (!is_preempt_notifier_registered(p))
     {
         pr_alert("preempt_notifier cannot release: %s(%d) not registered\n", p->comm, p->pid);
@@ -277,6 +276,12 @@ static void release_preempt_notifiers(struct device *dev, volatile struct task_s
         }
         rcu_read_unlock();
         status = NOT_STARTED;
+
+        pr_alert("READING VALUE: %ld\n", data->perf->reading_value);
+
+        data->perf->old_value = 0;
+        data->perf->new_value = 0;
+        data->perf->reading_value = 0;
     }
 }
 

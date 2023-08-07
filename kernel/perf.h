@@ -90,6 +90,10 @@ static int alloc_perf_energy_values(struct device *dev)
 		data->perf->new[cpu] = 0;
 		data->perf->reading[cpu] = 0;
 	}
+
+	data->perf->old_value = 0;
+	data->perf->new_value = 0;
+	data->perf->reading_value = 0;
 	return 0;
 }
 
@@ -263,12 +267,12 @@ static int perf_alloc_socket_config(struct device *dev)
 static int perf_alloc_sensor_accumulator(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);
-	energy_accum_t *accums = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(energy_accum_t), GFP_KERNEL);
-	if (!accums)
+	energy_accum_t *accumulators = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(energy_accum_t), GFP_KERNEL);
+	if (!accumulators)
 	{
 		return -ENOMEM;
 	}
-	data->accums = accums;
+	data->accumulators = accumulators;
 	return 0;
 }
 
