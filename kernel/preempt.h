@@ -29,7 +29,7 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
 
 static void ____sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    // preempt_disable();
+    preempt_disable();
 
     // pr_alert("IN: [%s (PID: %d, thread_info CPU: %d, notifier CPU: %d, smp CPU: %d)]\n",
     //     current->comm, current->pid, current->thread_info.cpu,
@@ -37,19 +37,19 @@ static void ____sched_in(struct preempt_notifier *notifier, int cpu)
 
     struct device *dev = &cpu_energy_pd->dev;
     energy_t *data = dev_get_drvdata(dev);
-    struct perf_event *event = data->perf[0].event;
+    // struct perf_event *event = data->perf[0].event;
 
-    u64 enabled, running;
-    data->perf->new_value = perf_event_read_value(event, &enabled, &running);
-    data->perf->reading_value += (data->perf->new_value - data->perf->old_value);
+    // u64 enabled, running;
+    // data->perf->new_value = perf_event_read_value(event, &enabled, &running);
+    // data->perf->reading_value += (data->perf->new_value - data->perf->old_value);
     // pr_alert("IN: data->perf->old[%d] = %ld\n", cpu, data->perf->old[cpu]);
 
-    // preempt_enable();
+    preempt_enable();
 }
 
 static void ____sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
-    // preempt_disable();
+    preempt_disable();
     // pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
     //          current->comm, current->pid, current->thread_info.cpu,
     //          next->comm, next->pid, next->thread_info.cpu);
@@ -57,14 +57,15 @@ static void ____sched_out(struct preempt_notifier *notifier, struct task_struct 
     struct device *dev = &cpu_energy_pd->dev;
     energy_t *data = dev_get_drvdata(dev);
     volatile int cpu = current->thread_info.cpu;
-    struct perf_event *event = data->perf[0].event;
+    // struct perf_event *event = data->perf[0].event;
 
-    u64 enabled, running;
+    // u64 enabled, running;
     
-    data->perf->old_value = perf_event_read_value(event, &enabled, &running);
+    // data->perf->old_value = perf_event_read_value(event, &enabled, &running);
+    // data->perf->old_value = read_pkg_energy(data, 16);
 
     // pr_alert("OUT: data->perf->reading[%d] = %ld\n", cpu, data->perf->reading[cpu]);
-    // preempt_enable();
+    preempt_enable();
 }
 
 static void __sched_in(struct preempt_notifier *notifier, int cpu)
@@ -279,9 +280,9 @@ static void release_preempt_notifiers(struct device *dev, volatile struct task_s
 
         pr_alert("READING VALUE: %ld\n", data->perf->reading_value);
 
-        data->perf->old_value = 0;
-        data->perf->new_value = 0;
-        data->perf->reading_value = 0;
+        // data->perf->old_value = 0;
+        // data->perf->new_value = 0;
+        // data->perf->reading_value = 0;
     }
 }
 
