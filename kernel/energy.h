@@ -16,8 +16,7 @@ typedef struct perf_data
 {
     struct perf_event_attr *attr;
     struct perf_event *event;
-    long long *old, *new, *reading;
-    long long old_value, new_value, reading_value;
+    long long *old_values, *new_values, *reading_values;
 } perf_t;
 
 struct preempt_notifier_data;
@@ -30,6 +29,7 @@ typedef struct preempt_notifier_data
 
 typedef struct energy_data
 {
+    long long old_value, new_value, reading_value;
     struct hwmon_channel_info energy_info;
     const struct hwmon_channel_info *info[2];
     struct hwmon_chip_info chip;

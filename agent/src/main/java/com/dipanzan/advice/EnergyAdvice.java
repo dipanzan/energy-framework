@@ -18,8 +18,8 @@ public class EnergyAdvice {
     }
 
     public static void printEnergyConsumed(Method method, long before, long after) {
-        double result = (after - before) / Math.pow(10, 6);
-//        double result = (after - before) * 2.3283064365386962890625e-10;
+//        double result = (after - before) / Math.pow(10, 6);
+        double result = (after - before) * 2.3283064365386962890625e-10;
         System.out.println("=====================JAVA======================");
         System.out.println(method.getName() + "(): energy consumed: " + result + "J");
         System.out.println("=====================JAVA======================");
@@ -35,12 +35,12 @@ public class EnergyAdvice {
     @Advice.OnMethodEnter(suppress = Throwable.class)
     public static long enter(@Advice.Origin Method method,
                              @Advice.AllArguments(typing = DYNAMIC) Object[] args) throws Exception {
-        return readEnergy(17);
+        return readEnergy(1);
     }
 
     @Advice.OnMethodExit(suppress = Throwable.class, onThrowable = Throwable.class)
     public static void exit(@Advice.Origin Method method, @Advice.Enter long before, @Advice.Origin String origin) throws Exception {
-        long after = readEnergy(17);
+        long after = readEnergy(1);
         printEnergyConsumed(method, before, after);
     }
 

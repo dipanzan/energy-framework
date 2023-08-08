@@ -120,7 +120,7 @@ static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u3
 	if (channel >= data->nr_cpus)
 	{
 		cpu = cpumask_first_and(cpu_online_mask, cpumask_of_node(channel - data->nr_cpus));
-		pr_alert("CPUUUUUUUUUUUUUUUUUUU: %d\n", cpu);
+		pr_alert("CPU: %d\n", cpu);
 		add_delta_pkg(data, channel, cpu, val);
 	}
 	else
@@ -586,7 +586,7 @@ static int __init energy_init(void)
 	// 	return ret;
 	// }
 
-	lookup_vars();
+	// lookup_vars();
 	lookup_functions();
 
 	// __EXPERIMENT_enable_perf_sched();

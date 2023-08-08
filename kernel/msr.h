@@ -62,6 +62,14 @@ static void set_energy_unit(energy_t *data)
 	data->energy_unit = (energy_unit & AMD_ENERGY_UNIT_MASK) >> 8;
 }
 
+static u64 read_msr_unsafe_on_cpu(int cpu, u32 reg)
+{
+	u64 value;
+	rdmsrl_on_cpu(cpu, reg, &value);
+	value &= AMD_ENERGY_MASK;
+	return value;
+}
+
 static u64 read_msr_on_cpu(int cpu, u32 reg)
 {
 	u64 value;
@@ -134,11 +142,10 @@ static void add_delta_pkg(energy_t *data, int channel, int cpu, long *val)
 	mutex_unlock(&data->lock);
 }
 
-static long long read_pkg_energy_WIP(energy_t *data, int cpu)
+static long long read_pkg_energy_WIP(energy_t *data)
 {
-    u64 value = read_msr_on_cpu(cpu, ENERGY_PKG_MSR);
-    return div64_ul(value * 1000000UL, BIT(data->energy_unit));
+	u64 value = read_msr_unsafe_on_cpu(0, ENERGY_PKG_MSR);
+	return div64_ul(value * 1000000UL, BIT(data->energy_unit));
 }
-
 
 #endif /* _MSR_H */

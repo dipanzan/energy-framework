@@ -33,12 +33,12 @@ public class Method {
     }
 
     public static void printEnergyConsumed(int core, long before, long after) {
-        System.out.println("before : " + before);
-        System.out.println("after : " + after);
-        double result = (after - before) * 2.3283064365386962890625e-10;
+//        System.out.println("before : " + before);
+//        System.out.println("after : " + after);
+//        double result = (after - before) * 2.3283064365386962890625e-10;
 
 
-//        double result = (after - before) / Math.pow(10, 6);
+        double result = (after - before) / Math.pow(10, 6);
         System.out.println("result : " + result);
 
         System.out.println("=====================JAVA======================");

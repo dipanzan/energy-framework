@@ -10,7 +10,6 @@
 #include <pthread.h>
 
 #define PERF_CONSTANT 2.3283064365386962890625e-10
-#define ENERGY_CONSTANT 100
 #define HWMON_PATH "/sys/class/hwmon/hwmon5/energy%i_input"
 
 static cpu_set_t mask;
@@ -20,7 +19,7 @@ static void init_threads(int nr_threads);
 static void wait_threads(int nr_threads);
 static void cancel_threads(int nr_threads);
 
-static unsigned long long read_energy()
+static unsigned long long read_energy(int core)
 {
     unsigned long long reading = 0;
     char *str = malloc(strlen(HWMON_PATH) * sizeof(char));
@@ -29,10 +28,11 @@ static unsigned long long read_energy()
         return -1;
     }
 
-    sprintf(str, HWMON_PATH, 17);
+    sprintf(str, HWMON_PATH, core);
+    printf("str: %s\n", str);
     FILE *file = fopen(str, "r");
-    char energy_reading[50];
-    fgets(energy_reading, 50, file);
+    char energy_reading[strlen(str)];
+    fgets(energy_reading, strlen(str), file);
     sscanf(energy_reading, "%llu", &reading);
     fclose(file);
 
@@ -93,11 +93,12 @@ int main(int argc, char *argv[])
     int pid = getpid();
     printf("pid: %d\n", pid);
 
-    int nr_threads = atoi(argv[1]);
-    int time = atoi(argv[2]);
+    int core = atoi(argv[1]);
+    int nr_threads = atoi(argv[2]);
+    int time = atoi(argv[3]);
 
     init_threads(nr_threads);
-    unsigned long long before = read_energy();
+    unsigned long long before = read_energy(core);
 
     // wait_threads(nr_threads);
     // sleep(time);
@@ -105,10 +106,10 @@ int main(int argc, char *argv[])
 
     sleep(time);
 
-    unsigned long long after = read_energy();
+    unsigned long long after = read_energy(core);
 
-    double result = (after - before) / pow(10, 6) /* * PERF_CONSTANT */;
+    double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
     printf("=====================C======================\n");
-    printf("energy consumed: %fJ\n", result);
+    printf("core %d: energy consumed: %fJ\n", core, result);
     printf("=====================C======================\n");
 }

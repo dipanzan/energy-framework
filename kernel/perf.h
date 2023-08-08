@@ -73,27 +73,27 @@ static unsigned int get_perf_cpu_count(void)
 static int alloc_perf_energy_values(struct device *dev)
 {
 	energy_t *data = dev_get_drvdata(dev);
-	long long *old = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
-	long long *new = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
-	long long *reading = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
-	if (!old && new && reading)
-	{
-		return -ENOMEM;
-	}
-	data->perf->old = old;
-	data->perf->new = new;
-	data->perf->reading = reading;
+	long long *old_values = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
+	long long *new_values = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
+	long long *reading_values = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
+	// if (!old && !new && !reading)
+	// {
+	// 	return -ENOMEM;
+	// }
+	data->perf->old_values = old_values;
+	data->perf->new_values = new_values;
+	data->perf->reading_values = reading_values;
 
 	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
 	{
-		data->perf->old[cpu] = 0;
-		data->perf->new[cpu] = 0;
-		data->perf->reading[cpu] = 0;
+		data->perf->old_values[cpu] = 0;
+		data->perf->new_values[cpu] = 0;
+		data->perf->reading_values[cpu] = 0;
 	}
 
-	data->perf->old_value = 0;
-	data->perf->new_value = 0;
-	data->perf->reading_value = 0;
+	// data->perf->old_value = 0;
+	// data->perf->new_value = 0;
+	// data->perf->reading_value = 0;
 	return 0;
 }
 

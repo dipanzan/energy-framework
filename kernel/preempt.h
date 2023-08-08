@@ -27,52 +27,80 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
     pr_alert("%s() called for pid: %d on cpu: %d\n", __FUNCTION__, pid, cpu);
 }
 
+static u64 experimental_read(struct perf_event *event)
+{
+    u64 total = 0;
+    (void)perf_event_read_func(event, false);
+    total += local64_read(&event->count) + atomic64_read(&event->child_count);
+    return total;
+}
+
+/**
+ * preempt_ops - notifiers called when a task is preempted and rescheduled
+ * @sched_in: we're about to be rescheduled:
+ *    notifier: struct preempt_notifier for the task being scheduled
+ *    cpu:  cpu we're scheduled on
+ * @sched_out: we've just been preempted
+ *    notifier: struct preempt_notifier for the task being preempted
+ *    next: the task that's kicking us out
+ *
+ * Please note that sched_in and out are called under different
+ * contexts.  sched_out is called with rq lock held and irq disabled
+ * while sched_in is called without rq lock and irq enabled.  This
+ * difference is intentional and depended upon by its users.
+ */
+
 static void ____sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    preempt_disable();
-
     // pr_alert("IN: [%s (PID: %d, thread_info CPU: %d, notifier CPU: %d, smp CPU: %d)]\n",
     //     current->comm, current->pid, current->thread_info.cpu,
     //     cpu, smp_processor_id());
 
-    struct device *dev = &cpu_energy_pd->dev;
-    energy_t *data = dev_get_drvdata(dev);
-    // struct perf_event *event = data->perf[0].event;
+    volatile struct device *dev = &cpu_energy_pd->dev;
+    volatile energy_t *data = dev_get_drvdata(dev);
+    volatile struct perf_event *event = data->perf[cpu].event;
 
-    // u64 enabled, running;
+    u64 enabled, running;
+
+    event->pmu->read(event);
+    u64 total;
     // data->perf->new_value = perf_event_read_value(event, &enabled, &running);
-    // data->perf->reading_value += (data->perf->new_value - data->perf->old_value);
-    // pr_alert("IN: data->perf->old[%d] = %ld\n", cpu, data->perf->old[cpu]);
+    total += local64_read(&event->count) /* + atomic64_read(&event->child_count) */;
+    data->new_value = total;
 
-    preempt_enable();
+    data->reading_value += data->new_value - data->old_value;
+    // pr_alert("total: %ld\n", total);
+
+    // data->reading_value += data->new_value - data->old_value;
 }
 
 static void ____sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
-    preempt_disable();
+    // preempt_disable();
     // pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
     //          current->comm, current->pid, current->thread_info.cpu,
     //          next->comm, next->pid, next->thread_info.cpu);
 
-    struct device *dev = &cpu_energy_pd->dev;
-    energy_t *data = dev_get_drvdata(dev);
+    volatile struct device *dev = &cpu_energy_pd->dev;
+    volatile energy_t *data = dev_get_drvdata(dev);
     volatile int cpu = current->thread_info.cpu;
-    // struct perf_event *event = data->perf[0].event;
+    volatile struct perf_event *event = data->perf[cpu].event;
 
     // u64 enabled, running;
-    
-    // data->perf->old_value = perf_event_read_value(event, &enabled, &running);
-    // data->perf->old_value = read_pkg_energy(data, 16);
 
-    // pr_alert("OUT: data->perf->reading[%d] = %ld\n", cpu, data->perf->reading[cpu]);
-    preempt_enable();
+    // data->perf->old_values[cpu] = perf_event_read_value(event, &enabled, &running);
+
+    event->pmu->read(event);
+    u64 total;
+    total += local64_read(&event->count);
+    data->old_value = total;
 }
 
 static void __sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    struct device *dev = &cpu_energy_pd->dev;
-    energy_t *data = dev_get_drvdata(dev);
-    struct perf_event *event = data->perf[cpu].event;
+    volatile struct device *dev = &cpu_energy_pd->dev;
+    volatile energy_t *data = dev_get_drvdata(dev);
+    volatile struct perf_event *event = data->perf[cpu].event;
     u64 value, enabled, running;
 
     // disable_irq();
@@ -114,7 +142,7 @@ static inline bool is_preempt_notifier_registered(struct task_struct *p)
 
 // WARNING: this function HAS TO BE FAST!
 // TODO: optimize more!
-static void init_preempt_notifier(struct task_struct *p)
+static void init_preempt_notifier(volatile struct task_struct *p)
 {
     if (unlikely(!is_task_alive(p)))
     {
@@ -122,7 +150,6 @@ static void init_preempt_notifier(struct task_struct *p)
         return;
     }
 
-    get_task_struct(p);
     // branch-optimize: preempt_threads probably already initialized.
     // gets a performance hit for newer registrations, but after that it should be performant
     // provided that no new threads are spawning! ;)
@@ -149,6 +176,7 @@ static void init_preempt_notifier(struct task_struct *p)
     ops->sched_in = ____sched_in;
     ops->sched_out = ____sched_out;
 
+    get_task_struct(p);
     // rcu_read_lock();
     INIT_HLIST_HEAD(&p->preempt_notifiers);
     preempt_notifier_init(notifier, ops);
@@ -278,11 +306,10 @@ static void release_preempt_notifiers(struct device *dev, volatile struct task_s
         rcu_read_unlock();
         status = NOT_STARTED;
 
-        pr_alert("READING VALUE: %ld\n", data->perf->reading_value);
-
-        // data->perf->old_value = 0;
-        // data->perf->new_value = 0;
-        // data->perf->reading_value = 0;
+        pr_alert("READING VALUE: %ld\n", data->reading_value);
+        data->reading_value = 0;
+        data->old_value = 0;
+        data->new_value = 0;
     }
 }
 

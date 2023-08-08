@@ -19,17 +19,17 @@ public class DemoApp {
 
     public static void main(String[] args) throws Exception {
 
-        test();
-//        long pid = ProcessHandle.current().pid();
-//        System.out.println(pid);
-//
-//        int threads = Integer.parseInt(args[0]);
-//        System.out.println(threads);
-//        int time = Integer.parseInt((args[1]));
-////        System.out.print("Press [enter]: ");
-////        new Scanner(System.in).nextLine();
+//        test();
+        long pid = ProcessHandle.current().pid();
+        System.out.println(pid);
+
+        int threads = Integer.parseInt(args[0]);
+        System.out.println(threads);
+        int time = Integer.parseInt((args[1]));
+        System.out.print("Press [enter]: ");
+        new Scanner(System.in).nextLine();
 //        Method.execute(17, () -> new Matrix(threads, time).run2());
-////        HELLO_BROCK(time);
+        HELLO_BROCK(time);
     }
 
     private static boolean run = false;
