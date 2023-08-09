@@ -55,10 +55,14 @@ static void ____sched_in(struct preempt_notifier *notifier, int cpu)
 
     volatile struct device *dev = &cpu_energy_pd->dev;
     volatile energy_t *data = dev_get_drvdata(dev);
-    volatile struct perf_event *event = data->perf[0].event;
+    volatile struct perf_event *event = data->perf[cpu].event;
 
     data->new_value = read_pmu(event);
+    data->perf->new_values[cpu] = data->new_value;
+
     data->reading_value += data->new_value - data->old_value;
+
+    data->perf->reading_values[cpu] += data->perf->new_values[cpu] - data->perf->old_values[cpu];
 }
 
 static void ____sched_out(struct preempt_notifier *notifier, struct task_struct *next)
@@ -76,9 +80,10 @@ static void ____sched_out(struct preempt_notifier *notifier, struct task_struct 
     volatile struct device *dev = &cpu_energy_pd->dev;
     volatile energy_t *data = dev_get_drvdata(dev);
     volatile int cpu = current->thread_info.cpu;
-    volatile struct perf_event *event = data->perf[0].event;
+    volatile struct perf_event *event = data->perf[cpu].event;
 
     data->old_value = read_pmu(event);
+    data->perf->old_values[cpu] = data->old_value;
 }
 
 static inline bool is_task_alive(struct task_struct *p)
@@ -251,7 +256,25 @@ static void release_preempt_notifiers(struct device *dev, volatile struct task_s
         rcu_read_unlock();
         status = NOT_STARTED;
 
-        pr_alert("READING VALUE: %ld\n", data->reading_value);
+        long long value = 0;
+        for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+        {
+            pr_alert("READING VALUE MULTI[CPU: %d]: %ld\n", cpu, data->perf->reading_values[cpu]);
+            value += data->perf->reading_values[cpu];
+        }
+
+        pr_alert("READING VALUE MULTI AVERAGE: %ld\n", value / 16);
+        value = 0;
+
+
+        for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+        {
+            data->perf->old_values[cpu] = 0;
+            data->perf->new_values[cpu] = 0;
+            data->perf->reading_values[cpu] = 0;
+        }
+
+        pr_alert("READING VALUE SINGLE: %ld\n", data->reading_value);
         data->reading_value = 0;
         data->old_value = 0;
         data->new_value = 0;
