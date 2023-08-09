@@ -10,16 +10,50 @@
 #define INACTIVE "PERF_EVENT_STATE_INACTIVE [0]\n"
 #define ACTIVE "PERF_EVENT_STATE_ACTIVE [1]\n"
 
+static void enable_pmu(const struct perf_event *event)
+{
+	struct pmu *pmu = event->pmu;
+	pmu->pmu_enable(pmu);
+}
+
+static void disable_pmu(const struct perf_event *event)
+{
+	struct pmu *pmu = event->pmu;
+	pmu->pmu_disable(pmu);
+}
+
+static void start_pmu(const struct perf_event *event)
+{
+	struct pmu *pmu = event->pmu;
+	pmu->start(event, PERF_EF_RELOAD);
+}
+
+static void stop_pmu(const struct perf_event *event)
+{
+	struct pmu *pmu = event->pmu;
+	pmu->stop(event, PERF_EF_UPDATE);
+}
+
+static u64 read_pmu(const struct perf_event *event)
+{
+	u64 total;
+	struct pmu *pmu = event->pmu;
+	pmu->read(event);
+	total = local64_read(&event->count);
+
+	return total;
+}
+
 static void __EXPERIMENT_enable_perf_sched(void)
 {
 	pr_alert("%s(): WARNING: Extremely unsafe use of static_branch_enable\n", __FUNCTION__);
 	mutex_lock(perf_sched_mutex_var);
 	// rcu_read_lock();
-    static_branch_enable(perf_sched_events_var);
-    synchronize_rcu();
-    atomic_inc(perf_sched_count_var);
+	static_branch_enable(perf_sched_events_var);
+	synchronize_rcu();
+	atomic_inc(perf_sched_count_var);
 	// rcu_read_unlock();
-    mutex_unlock(perf_sched_mutex_var);
+	mutex_unlock(perf_sched_mutex_var);
 }
 
 static void __EXPERIMENT_disable_perf_sched(void)
@@ -27,11 +61,11 @@ static void __EXPERIMENT_disable_perf_sched(void)
 	pr_alert("%s(): WARNING: Extremely unsafe use of static_branch_disable\n", __FUNCTION__);
 	mutex_lock(perf_sched_mutex_var);
 	// rcu_read_lock();
-    static_branch_disable(perf_sched_events_var);
-    synchronize_rcu();
-    atomic_dec(perf_sched_count_var);
+	static_branch_disable(perf_sched_events_var);
+	synchronize_rcu();
+	atomic_dec(perf_sched_count_var);
 	// rcu_read_unlock();
-    mutex_unlock(perf_sched_mutex_var);
+	mutex_unlock(perf_sched_mutex_var);
 }
 
 static void print_perf_event_state(struct perf_event *event)
@@ -96,7 +130,6 @@ static int alloc_perf_energy_values(struct device *dev)
 	// data->perf->reading_value = 0;
 	return 0;
 }
-
 
 static int perf_alloc(struct device *dev)
 {
@@ -193,7 +226,6 @@ static int enable_perf_events(struct device *dev)
 		}
 		struct perf_event *event = data->perf[cpu].event;
 		perf_event_enable(event);
-
 #if DEBUG
 		print_perf_event_state(event);
 #endif
@@ -232,7 +264,6 @@ static int release_perf_event_kernel_counters(struct device *dev)
 	}
 	return ret;
 }
-
 
 static int perf_alloc_cpu_cores(struct device *dev)
 {
