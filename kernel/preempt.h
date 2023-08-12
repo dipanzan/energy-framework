@@ -71,6 +71,7 @@ static void ____sched_in(struct preempt_notifier *notifier, int cpu)
     volatile energy_t *data = dev_get_drvdata(dev);
     volatile struct perf_event *event = data->perf[cpu].event;
     enable_pmu(event);
+    start_pmu(event);
 }
 
 static void ____sched_out(struct preempt_notifier *notifier, struct task_struct *next)
@@ -88,6 +89,7 @@ static void ____sched_out(struct preempt_notifier *notifier, struct task_struct 
     volatile energy_t *data = dev_get_drvdata(dev);
     volatile int cpu = current->thread_info.cpu;
     volatile struct perf_event *event = data->perf[cpu].event;
+    stop_pmu(event);
     disable_pmu(event);
 }
 

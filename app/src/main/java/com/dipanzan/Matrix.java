@@ -35,6 +35,7 @@ public class Matrix {
     }
 
     public void run2() {
+        long before = readEnergy(1);
         List<Thread> threads = new ArrayList<>(NUM_THEADS);
         for (int i = 0; i < NUM_THEADS; i++) {
             threads.add(new Thread(this::load));
@@ -49,6 +50,8 @@ public class Matrix {
             }
         }
         threads.forEach(Thread::stop);
+        long after = readEnergy(1);
+        printEnergyConsumed(1, before, after);
     }
 
     public void run() {

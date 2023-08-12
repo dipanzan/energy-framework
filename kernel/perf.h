@@ -45,7 +45,6 @@ static void stop_pmu(const struct perf_event *event)
 static u64 read_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
-	// this is the culprit, sometimes in_atomic context it crashes. :(
 	rcu_read_lock();
 	pmu->read(event);
 	rcu_read_unlock();

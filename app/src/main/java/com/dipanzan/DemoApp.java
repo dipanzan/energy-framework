@@ -28,7 +28,8 @@ public class DemoApp {
         int time = Integer.parseInt((args[1]));
 //        System.out.print("Press [enter]: ");
 //        new Scanner(System.in).nextLine();
-        Method.execute(1, () -> new Matrix(threads, time).run2());
+//        Method.execute(1, () -> new Matrix(threads, time).run2());
+        new Matrix(threads, time).run2();
 //        HELLO_BROCK(time);
     }
 
