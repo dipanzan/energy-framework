@@ -142,9 +142,9 @@ static void add_delta_pkg(energy_t *data, int channel, int cpu, long *val)
 	mutex_unlock(&data->lock);
 }
 
-static long long read_pkg_energy_WIP(energy_t *data)
+static long long read_pkg_energy_WIP(energy_t *data, unsigned int cpu)
 {
-	u64 value = read_msr_unsafe_on_cpu(0, ENERGY_PKG_MSR);
+	u64 value = read_msr_on_cpu(cpu, ENERGY_PKG_MSR);
 	return div64_ul(value * 1000000UL, BIT(data->energy_unit));
 }
 

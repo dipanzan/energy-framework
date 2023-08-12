@@ -42,10 +42,24 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
  * difference is intentional and depended upon by its users.
  */
 
+static __always_inline bool in_nmi_or_softirq_or_hardirq_context(void)
+{
+    return in_nmi() || in_hardirq() || in_serving_softirq();
+}
+
+// __always_inline MAYBE?
 static void ____sched_in(struct preempt_notifier *notifier, int cpu)
 {
-    // pr_alert("in_atomic(): %d\n", in_atomic());
-    if (unlikely(in_nmi() || in_hardirq() || in_serving_softirq()))
+    /*
+        Very important not to rdo eading logic here, everything is in atomic context
+        in sched_in(). If in the unlikely chance, you are in nmi, soft/hard irq and
+        try to do either read_msr or variants or perf_event_read, it'll crash the system.
+        There's no mechanism for sleeping in atomic contexts, so using rcu_read/write locks are
+        also not going to work here.
+
+        This is for a future reader - you have been warned!
+     */
+    if (unlikely(in_nmi_or_softirq_or_hardirq_context()))
     {
         return;
     }
@@ -56,23 +70,16 @@ static void ____sched_in(struct preempt_notifier *notifier, int cpu)
     volatile struct device *dev = &cpu_energy_pd->dev;
     volatile energy_t *data = dev_get_drvdata(dev);
     volatile struct perf_event *event = data->perf[cpu].event;
-
-    data->new_value = read_pmu(event);
-    data->perf->new_values[cpu] = data->new_value;
-
-    data->reading_value += data->new_value - data->old_value;
-
-    data->perf->reading_values[cpu] += data->perf->new_values[cpu] - data->perf->old_values[cpu];
+    enable_pmu(event);
 }
 
 static void ____sched_out(struct preempt_notifier *notifier, struct task_struct *next)
 {
     // pr_alert("in_atomic(): %d\n", in_atomic());
-    if (unlikely(in_nmi() || in_hardirq() || in_serving_softirq()))
+    if (unlikely(in_nmi_or_softirq_or_hardirq_context()))
     {
         return;
     }
-    // preempt_disable();
     // pr_alert("OUT: [%s (PID: %d, CPU: %d)], NEXT: [%s (PID: %d, CPU: %d)]\n",
     //          current->comm, current->pid, current->thread_info.cpu,
     //          next->comm, next->pid, next->thread_info.cpu);
@@ -81,17 +88,15 @@ static void ____sched_out(struct preempt_notifier *notifier, struct task_struct 
     volatile energy_t *data = dev_get_drvdata(dev);
     volatile int cpu = current->thread_info.cpu;
     volatile struct perf_event *event = data->perf[cpu].event;
-
-    data->old_value = read_pmu(event);
-    data->perf->old_values[cpu] = data->old_value;
+    disable_pmu(event);
 }
 
-static inline bool is_task_alive(struct task_struct *p)
+static inline bool is_task_alive(volatile struct task_struct *p)
 {
     return p != NULL;
 }
 
-static inline bool is_preempt_notifier_registered(struct task_struct *p)
+static inline bool is_preempt_notifier_registered(volatile struct task_struct *p)
 {
     return !hlist_empty(&p->preempt_notifiers);
 }
@@ -133,13 +138,11 @@ static void init_preempt_notifier(volatile struct task_struct *p)
     ops->sched_out = ____sched_out;
 
     get_task_struct(p);
-    // rcu_read_lock();
     INIT_HLIST_HEAD(&p->preempt_notifiers);
     preempt_notifier_init(notifier, ops);
     preempt_notifier_inc();
     hlist_add_head(&notifier->link, &p->preempt_notifiers);
     put_task_struct(p);
-    // rcu_read_unlock();
 
     pr_alert("preempt_notifier registered: %s(%d)\n", p->comm, p->pid);
 }
@@ -172,13 +175,73 @@ static int scan_preempt_registration(void *data)
     return 0;
 }
 
+static int energy_runner(void *p)
+{
+    pr_alert("%s() called\n", __FUNCTION__);
+    volatile energy_t *data = (energy_t *)p;
+    while (!kthread_should_stop())
+    {
+        for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+        {
+            struct perf_event *event = data->perf[cpu].event;
+
+            u64 energy_counter_old = data->perf->energy_counters[cpu];
+            u64 energy_counter_new = read_pmu(event);
+            data->perf->energy_counters[cpu] = energy_counter_new - energy_counter_old;
+        }
+        if (kthread_should_stop())
+        {
+            break;
+        }
+        long energy_running = schedule_timeout_uninterruptible(msecs_to_jiffies(1));
+    }
+    return 0;
+}
+
+static void start_energy_runner_thread(struct device *dev)
+{
+    energy_t *data = dev_get_drvdata(dev);
+    data->energy_runner = kthread_create(energy_runner, data, ENERGY_RUNNER_THREAD, dev_name(dev));
+    if (IS_ERR(data->energy_runner))
+    {
+        pr_alert("%s failed to start.\n", ENERGY_RUNNER_THREAD);
+        return;
+    }
+    get_task_struct(data->energy_runner);
+    wake_up_process(data->energy_runner);
+}
+
 static void start_preempt_scan_thread(struct device *dev, struct task_struct *p)
 {
     energy_t *data = dev_get_drvdata(dev);
     // data->preempt_runner = kthread_run(scan_preempt_registration, p, PREEMPT_SCAN_THREAD, dev_name(dev));
+
+    /* DO NOT USE kthread_run()
+       The explicit reason for starting the scan thread is because of preempt release mechanism
+       In order make sure the refcount for the scan thread is accurate when starting the thread
+       prevents it from crashing during release!
+     */
     data->preempt_runner = kthread_create(scan_preempt_registration, p, PREEMPT_SCAN_THREAD, dev_name(dev));
+    if (IS_ERR(data->preempt_runner))
+    {
+        pr_alert("%s failed to start.\n", PREEMPT_SCAN_THREAD);
+        return;
+    }
+    // data->preempt_runner = kthread_create_on_cpu(scan_preempt_registration, p, 4, PREEMPT_SCAN_THREAD);
     get_task_struct(data->preempt_runner);
     wake_up_process(data->preempt_runner);
+}
+
+static void stop_energy_runner_thread(struct device *dev)
+{
+    pr_alert("%s() called\n", __FUNCTION__);
+    energy_t *data = dev_get_drvdata(dev);
+
+    if (data && data->energy_runner)
+    {
+        kthread_stop(data->energy_runner);
+        put_task_struct(data->energy_runner);
+    }
 }
 
 static void init_preempt_notifiers(struct device *dev, struct task_struct *p)
@@ -191,6 +254,7 @@ static void init_preempt_notifiers(struct device *dev, struct task_struct *p)
 
     if (status == NOT_STARTED)
     {
+        // start_energy_runner_thread(dev);
         init_preempt_notifier(p);
         start_preempt_scan_thread(dev, p);
         status = RUNNING;
@@ -211,7 +275,6 @@ static void release_preempt_notifier(volatile struct task_struct *p)
         return;
     }
 
-    local_irq_disable();
     get_task_struct(p);
     struct hlist_node *node, *temp;
     hlist_for_each_safe(node, temp, &p->preempt_notifiers)
@@ -224,7 +287,6 @@ static void release_preempt_notifier(volatile struct task_struct *p)
         pr_alert("preempt_notifier released: %s(%d)\n", p->comm, p->pid);
     }
     put_task_struct(p);
-    local_irq_enable();
 }
 
 static void stop_preempt_scan_thread(struct device *dev, volatile struct task_struct *p)
@@ -245,6 +307,7 @@ static void release_preempt_notifiers(struct device *dev, volatile struct task_s
     {
         energy_t *data = dev_get_drvdata(dev);
         stop_preempt_scan_thread(dev, p);
+        // stop_energy_runner_thread(dev);
 
         rcu_read_lock();
         volatile struct task_struct *t = p;
@@ -255,29 +318,6 @@ static void release_preempt_notifiers(struct device *dev, volatile struct task_s
         }
         rcu_read_unlock();
         status = NOT_STARTED;
-
-        long long value = 0;
-        for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
-        {
-            pr_alert("READING VALUE MULTI[CPU: %d]: %ld\n", cpu, data->perf->reading_values[cpu]);
-            value += data->perf->reading_values[cpu];
-        }
-
-        pr_alert("READING VALUE MULTI AVERAGE: %ld\n", value / 16);
-        value = 0;
-
-
-        for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
-        {
-            data->perf->old_values[cpu] = 0;
-            data->perf->new_values[cpu] = 0;
-            data->perf->reading_values[cpu] = 0;
-        }
-
-        pr_alert("READING VALUE SINGLE: %ld\n", data->reading_value);
-        data->reading_value = 0;
-        data->old_value = 0;
-        data->new_value = 0;
     }
 }
 

@@ -10,8 +10,9 @@
 
 #define ACCUM_CUSTOM_TIMEOUT 1000
 
-#define ENERGY_ACCUM_THREAD "energy_runner"
+#define ENERGY_ACCUM_THREAD "energy_accumulator_thread"
 #define PREEMPT_SCAN_THREAD "preempt_scan_thread"
+#define ENERGY_RUNNER_THREAD "energy_runner_thread"
 
 #define DEBUG 0
 #define ENERGY_TYPE 12

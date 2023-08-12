@@ -13,35 +13,43 @@
 static void enable_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
+	rcu_read_lock();
 	pmu->pmu_enable(pmu);
+	rcu_read_unlock();
 }
 
 static void disable_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
+	rcu_read_unlock();
 	pmu->pmu_disable(pmu);
+	rcu_read_unlock();
 }
 
 static void start_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
+	rcu_read_lock();
 	pmu->start(event, PERF_EF_RELOAD);
+	rcu_read_unlock();
 }
 
 static void stop_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
+	rcu_read_lock();
 	pmu->stop(event, PERF_EF_UPDATE);
+	rcu_read_unlock();
 }
 
 static u64 read_pmu(const struct perf_event *event)
 {
-	u64 total;
 	struct pmu *pmu = event->pmu;
+	// this is the culprit, sometimes in_atomic context it crashes. :(
+	rcu_read_lock();
 	pmu->read(event);
-	total = local64_read(&event->count);
-
-	return total;
+	rcu_read_unlock();
+	return local64_read(&event->count);
 }
 
 static void __EXPERIMENT_enable_perf_sched(void)
@@ -102,33 +110,6 @@ static void print_perf_event_state(struct perf_event *event)
 static unsigned int get_perf_cpu_count(void)
 {
 	return get_core_cpu_count() * 2;
-}
-
-static int alloc_perf_energy_values(struct device *dev)
-{
-	energy_t *data = dev_get_drvdata(dev);
-	long long *old_values = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
-	long long *new_values = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
-	long long *reading_values = devm_kcalloc(dev, data->nr_cpus_perf, sizeof(long long), GFP_KERNEL);
-	// if (!old && !new && !reading)
-	// {
-	// 	return -ENOMEM;
-	// }
-	data->perf->old_values = old_values;
-	data->perf->new_values = new_values;
-	data->perf->reading_values = reading_values;
-
-	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
-	{
-		data->perf->old_values[cpu] = 0;
-		data->perf->new_values[cpu] = 0;
-		data->perf->reading_values[cpu] = 0;
-	}
-
-	// data->perf->old_value = 0;
-	// data->perf->new_value = 0;
-	// data->perf->reading_value = 0;
-	return 0;
 }
 
 static int perf_alloc(struct device *dev)
@@ -341,4 +322,37 @@ static int release_perf_counters(struct device *dev)
 	return ret;
 }
 
+static int alloc_perf_is_on_cpus(struct device *dev)
+{
+	energy_t *data = dev_get_drvdata(dev);
+	bool *is_on_cpus = kzalloc(data->nr_cpus_perf * sizeof(bool), GFP_KERNEL);
+	if (!is_on_cpus)
+	{
+		return -ENOMEM;
+	}
+
+	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+	{
+		is_on_cpus[cpu] = false;
+	}
+	data->perf->is_on_cpus = is_on_cpus;
+	return 0;
+}
+
+static int alloc_perf_cpu_energy_counters(struct device *dev)
+{
+	energy_t *data = dev_get_drvdata(dev);
+	u64 *energy_counters = kzalloc(data->nr_cpus_perf * sizeof(u64), GFP_KERNEL);
+	if (!energy_counters)
+	{
+		return -ENOMEM;
+	}
+
+	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+	{
+		energy_counters[cpu] = 0;
+	}
+	data->perf->energy_counters = energy_counters;
+	return 0;
+}
 #endif /* _PERF_H */
