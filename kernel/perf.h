@@ -10,36 +10,42 @@
 #define INACTIVE "PERF_EVENT_STATE_INACTIVE [0]\n"
 #define ACTIVE "PERF_EVENT_STATE_ACTIVE [1]\n"
 
-static void enable_pmu(const struct perf_event *event)
+typedef u64 (*pmu_func)(const struct perf_event *event);
+
+static u64 enable_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
 	rcu_read_lock();
 	pmu->pmu_enable(pmu);
 	rcu_read_unlock();
+	return 0;
 }
 
-static void disable_pmu(const struct perf_event *event)
+static u64 disable_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
 	rcu_read_unlock();
 	pmu->pmu_disable(pmu);
 	rcu_read_unlock();
+	return 0;
 }
 
-static void start_pmu(const struct perf_event *event)
+static u64 start_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
 	rcu_read_lock();
-	pmu->start(event, PERF_EF_RELOAD);
+	pmu->start(event, PERF_EF_UPDATE);
 	rcu_read_unlock();
+	return 0;
 }
 
-static void stop_pmu(const struct perf_event *event)
+static u64 stop_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
 	rcu_read_lock();
 	pmu->stop(event, PERF_EF_UPDATE);
 	rcu_read_unlock();
+	return 0;
 }
 
 static u64 read_pmu(const struct perf_event *event)
@@ -50,6 +56,8 @@ static u64 read_pmu(const struct perf_event *event)
 	rcu_read_unlock();
 	return local64_read(&event->count);
 }
+
+
 
 static void __EXPERIMENT_enable_perf_sched(void)
 {
@@ -243,6 +251,26 @@ static int release_perf_event_kernel_counters(struct device *dev)
 		ret |= perf_event_release_kernel(event);
 	}
 	return ret;
+}
+
+static int disable_perf_pmus(struct device *dev)
+{
+	energy_t *data = dev_get_drvdata(dev);
+	for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+	{
+		if (!cpu_online(cpu))
+		{
+			pr_alert("CPU: %d offline, skipping perf event disable.\n", cpu);
+			continue;
+		}
+		struct perf_event *event = data->perf[cpu].event;
+		disable_pmu(event);
+
+#if DEBUG
+		print_perf_event_state(event);
+#endif
+	}
+	return 0;
 }
 
 static int perf_alloc_cpu_cores(struct device *dev)

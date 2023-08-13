@@ -4,6 +4,34 @@
 static void __sched_in(struct preempt_notifier *notifier, int cpu);
 static void __sched_out(struct preempt_notifier *notifier, struct task_struct *next);
 
+/* MAJOR WARNING: DO NOT USE IRQ toggle
+   You will undoubtedly mess it up, and LOCK UP the system!
+   No amount of precaution checks will help here, you have been warned!
+   This is for a future reader. :)
+ */
+static void irq_toggle(pmu_func func, const struct perf_event *event)
+{
+    local_irq_disable();
+    func(event);
+    local_irq_enable();
+}
+
+static void rcu_toggle(pmu_func func, const struct perf_event *event)
+{
+    rcu_read_lock();
+    func(event);
+    rcu_read_unlock();
+}
+
+static u64 preempt_toggle(pmu_func func, const struct perf_event *event)
+{
+    u64 ret;
+    preempt_disable();
+    ret = func(event);
+    preempt_enable();
+    return ret;
+}
+
 enum STATUS
 {
     NOT_STARTED = 0,
@@ -51,7 +79,7 @@ static __always_inline bool in_nmi_or_softirq_or_hardirq_context(void)
 static void ____sched_in(struct preempt_notifier *notifier, int cpu)
 {
     /*
-        Very important not to rdo eading logic here, everything is in atomic context
+        Very important not to reading logic here, everything is in atomic context
         in sched_in(). If in the unlikely chance, you are in nmi, soft/hard irq and
         try to do either read_msr or variants or perf_event_read, it'll crash the system.
         There's no mechanism for sleeping in atomic contexts, so using rcu_read/write locks are
@@ -70,8 +98,9 @@ static void ____sched_in(struct preempt_notifier *notifier, int cpu)
     volatile struct device *dev = &cpu_energy_pd->dev;
     volatile energy_t *data = dev_get_drvdata(dev);
     volatile struct perf_event *event = data->perf[cpu].event;
-    enable_pmu(event);
-    start_pmu(event);
+
+    preempt_toggle(enable_pmu, event);
+    // preempt_toggle(start_pmu, event);
 }
 
 static void ____sched_out(struct preempt_notifier *notifier, struct task_struct *next)
@@ -89,8 +118,11 @@ static void ____sched_out(struct preempt_notifier *notifier, struct task_struct 
     volatile energy_t *data = dev_get_drvdata(dev);
     volatile int cpu = current->thread_info.cpu;
     volatile struct perf_event *event = data->perf[cpu].event;
-    stop_pmu(event);
-    disable_pmu(event);
+
+    preempt_toggle(disable_pmu, event);
+
+    // preempt_toggle(stop_pmu, event);
+    // data->perf->energy_counters[cpu] = preempt_toggle(read_pmu, event) - data->perf->energy_counters[cpu];
 }
 
 static inline bool is_task_alive(volatile struct task_struct *p)
@@ -303,6 +335,17 @@ static void stop_preempt_scan_thread(struct device *dev, volatile struct task_st
     }
 }
 
+static void print_numbers(energy_t *data)
+{
+    u64 total = 0;
+    for (unsigned int cpu = 0; cpu < data->nr_cpus_perf; cpu++)
+    {
+        pr_alert("data->perf->energy_counters[%d] = %ld\n", cpu, data->perf->energy_counters[cpu]);
+        total += data->perf->energy_counters[cpu];
+    }
+    pr_alert("TOTAL = %ld\n", total);
+
+}
 static void release_preempt_notifiers(struct device *dev, volatile struct task_struct *p)
 {
     if (status == COMPLETE)
@@ -320,6 +363,7 @@ static void release_preempt_notifiers(struct device *dev, volatile struct task_s
         }
         rcu_read_unlock();
         status = NOT_STARTED;
+        print_numbers(data);
     }
 }
 

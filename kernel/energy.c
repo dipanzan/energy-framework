@@ -142,7 +142,7 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
 
 	// find_threads(p);
-	lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
 	init_preempt_notifiers(dev, p);
 	release_preempt_notifiers(dev, p);
 
@@ -360,6 +360,7 @@ static int init_perf_backend(struct device *dev)
 		ret |= alloc_perf_cpu_energy_counters(dev);
 		ret |= alloc_perf_is_on_cpus(dev);
 		ret |= enable_perf_events(dev);
+		ret |= disable_perf_pmus(dev);
 	}
 	return ret;
 }
@@ -579,19 +580,7 @@ static int __init energy_init(void)
 		platform_driver_unregister(&energy_driver);
 		return ret;
 	}
-
-	// ret = init_kprobe();
-	// if (ret)
-	// {
-	// 	release_kprobe();
-	// 	return ret;
-	// }
-
-	// lookup_vars();
 	lookup_functions();
-
-	// __EXPERIMENT_enable_perf_sched();
-	// fh_install_hook(&fh);
 
 	pr_alert("energy module loaded!\n");
 	pr_alert("[WARNING]: YOU ARE IN KERNEL MODE - PREEMPTION DISABLED YOU HAVE BEEN WARNED! :#\n");
