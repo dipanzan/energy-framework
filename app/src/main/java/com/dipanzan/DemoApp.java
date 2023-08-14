@@ -19,18 +19,21 @@ public class DemoApp {
 
     public static void main(String[] args) throws Exception {
 
-        test();
-//        long pid = ProcessHandle.current().pid();
-//        System.out.println(pid);
-//
-//        int threads = Integer.parseInt(args[0]);
-//        System.out.println(threads);
-//        int time = Integer.parseInt((args[1]));
-////        System.out.print("Press [enter]: ");
-////        new Scanner(System.in).nextLine();
+//        test();
+        long pid = ProcessHandle.current().pid();
+        System.out.println(pid);
+
+        int threads = Integer.parseInt(args[0]);
+        System.out.println(threads);
+        int time = Integer.parseInt((args[1]));
+        System.out.print("Press [enter]: ");
+        new Scanner(System.in).nextLine();
 ////        Method.execute(1, () -> new Matrix(threads, time).run2());
 //        new Matrix(threads, time).run2();
-////        HELLO_BROCK(time);
+        HELLO_BROCK(time);
+        hello(time);
+        hello_NOT_MARKED(time);
+
     }
 
     private static boolean run = false;
@@ -64,6 +67,15 @@ public class DemoApp {
         for (int i = 0; i < times; i++) {
             System.out.print("");
         }
+        System.out.println("");
+    }
+
+
+    private static void hello_NOT_MARKED(int times) {
+        for (int i = 0; i < times; i++) {
+            System.out.print("NOT MARKED");
+        }
+        System.out.println("");
     }
 
     private static void sleep(int n) {

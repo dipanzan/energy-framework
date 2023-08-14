@@ -23,6 +23,11 @@ static void rcu_toggle(pmu_func func, const struct perf_event *event)
     rcu_read_unlock();
 }
 
+/* 
+    preempt_toogle() is used in the pmu functions from perf.h for start/stop/disable/enable
+    This still has a tendency for a kernel oops, if the pmu_* functions doesn't complete on time i.e sleeps/interrupted.
+    Please use this with caution!
+ */
 static u64 preempt_toggle(pmu_func func, const struct perf_event *event)
 {
     u64 ret;

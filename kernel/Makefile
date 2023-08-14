@@ -26,10 +26,13 @@ clean:
 	$(MAKE) -C $(KDIR) M=$$PWD clean
 
 init:
-	sudo insmod $(MODULE_NAME).ko mode=0
+	sudo insmod $(MODULE_NAME).ko mode=0 multi=0
 
 initp:
-	sudo insmod $(MODULE_NAME).ko mode=1
+	sudo insmod $(MODULE_NAME).ko mode=1 multi=0
+
+initpmt:
+	sudo insmod $(MODULE_NAME).ko mode=1 multi=1
 
 initpr:
 	sudo insmod $(MODULE_NAME).ko mode=0 pid=$(pid)

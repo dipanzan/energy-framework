@@ -5,6 +5,7 @@ static char *name = NULL;
 static int pid = -1;
 static int cpu = -1;
 static int mode = -1;
+static int multi = 0;
 
 typedef struct energy_accumulator
 {

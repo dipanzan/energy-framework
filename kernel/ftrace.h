@@ -3,6 +3,20 @@
 
 void (*__perf_event_task_sched_in_real)(struct task_struct *prev, struct task_struct *task);
 
+/* 
+    The compiler optimizes tail-call functions which prevents saving the parent pointer properly.
+    Should you remove the no-optimize-sibling-calls, it WILL CRASH the system if you try any hooks
+    with high traffic: sched_*, scheduler(), system-calls(): e.g: clone/fork.
+
+    The solution is to disable compiler optimization for the _fh (function hooked) calls, so that
+    the parent pointer is properly saved and does not incur a recursive loop when jumping to the hooked
+    function.
+
+    PLEASE DO NOT CHANGE, and apply these #pragma directives if you want to hook other functions in the kernel.
+
+    This is for a future reader! :)
+
+ */
 #pragma GCC push_options // Save current options
 #pragma GCC optimize ("no-optimize-sibling-calls")
 void __perf_event_task_sched_in_fh(struct task_struct *prev, struct task_struct *task)

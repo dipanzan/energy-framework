@@ -72,11 +72,13 @@ module_param(name, charp, 0000);
 module_param(pid, int, 0000);
 module_param(cpu, int, 0000);
 module_param(mode, int, 0000);
+module_param(multi, int, 0000);
 
 MODULE_PARM_DESC(name, "[name] is the process name to attach to.");
 MODULE_PARM_DESC(pid, "[pid] is the PID to to attach to.");
 MODULE_PARM_DESC(cpu, "[cpu] is the target CPU for energy measurement.");
 MODULE_PARM_DESC(mode, "[mode] is the backend mode for energy data source. [0]- MSR, [1]- perf");
+MODULE_PARM_DESC(mode, "[multi] is the multithreaded mode of the framework. [0]- SINGLE, [1]- MULTITHREADED");
 
 // regular user/non-sudo access of counters from hwmon interface
 static umode_t read_energy_visibility(const void *drv_data, enum hwmon_sensor_types type, u32 attr, int channel)
@@ -142,7 +144,11 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
 
 	// find_threads(p);
-	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	if (multi == 0)
+	{
+		lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	}
+
 	init_preempt_notifiers(dev, p);
 	release_preempt_notifiers(dev, p);
 
@@ -583,7 +589,7 @@ static int __init energy_init(void)
 	lookup_functions();
 
 	pr_alert("energy module loaded!\n");
-	pr_alert("[WARNING]: YOU ARE IN KERNEL MODE - PREEMPTION DISABLED YOU HAVE BEEN WARNED! :#\n");
+	pr_alert("[WARNING]: YOU ARE IN KERNEL MODE - PREEMPTION DISABLED YOU HAVE BEEN WARNED!\n");
 	return ret;
 }
 
@@ -597,7 +603,7 @@ static void __exit energy_exit(void)
 
 	// fh_remove_hook(&fh);
 	pr_alert("energy module unloaded\n");
-	pr_alert("[WARNING]: EXITING KERNEL MODE - PREEMPTION ENABLED, SWITCHING TO USER MODE! :)\n");
+	pr_alert("[WARNING]: EXITING KERNEL MODE - PREEMPTION ENABLED, SWITCHING TO USER MODE!\n");
 }
 
 module_init(energy_init);
