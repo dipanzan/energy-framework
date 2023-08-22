@@ -179,7 +179,7 @@ static void init_preempt_notifier(volatile struct task_struct *p)
     get_task_struct(p);
     INIT_HLIST_HEAD(&p->preempt_notifiers);
     preempt_notifier_init(notifier, ops);
-    preempt_notifier_inc();
+    // preempt_notifier_inc();
     hlist_add_head(&notifier->link, &p->preempt_notifiers);
     put_task_struct(p);
 
@@ -194,7 +194,7 @@ static int scan_preempt_registration(void *data)
     {
         // rcu_read_lock();
         volatile struct task_struct *t = p;
-
+        // find_threads(t);
         while_each_thread(p, t)
         {
             init_preempt_notifier(t); // all other threads (t) other than parent (p)
@@ -320,7 +320,7 @@ static void release_preempt_notifier(volatile struct task_struct *p)
     {
         struct preempt_notifier *notifier = container_of(node, struct preempt_notifier, link);
         hlist_del(&notifier->link);
-        preempt_notifier_dec();
+        // preempt_notifier_dec();
         kfree(notifier->ops);
         kfree(notifier);
         pr_alert("preempt_notifier released: %s(%d)\n", p->comm, p->pid);

@@ -26,13 +26,13 @@ public class DemoApp {
         int threads = Integer.parseInt(args[0]);
         System.out.println(threads);
         int time = Integer.parseInt((args[1]));
-        System.out.print("Press [enter]: ");
-        new Scanner(System.in).nextLine();
-////        Method.execute(1, () -> new Matrix(threads, time).run2());
+//        System.out.print("Press [enter]: ");
+//        new Scanner(System.in).nextLine();
+        Method.execute(1, () -> new Matrix(threads, time).run2());
 //        new Matrix(threads, time).run2();
-        HELLO_BROCK(time);
-        hello(time);
-        hello_NOT_MARKED(time);
+//        HELLO_BROCK(time);
+//        hello(time);
+//        hello_NOT_MARKED(time);
 
     }
 

@@ -15,49 +15,37 @@ typedef u64 (*pmu_func)(const struct perf_event *event);
 static u64 enable_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
-	rcu_read_lock();
 	pmu->pmu_enable(pmu);
-	rcu_read_unlock();
 	return 0;
 }
 
 static u64 disable_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
-	rcu_read_unlock();
 	pmu->pmu_disable(pmu);
-	rcu_read_unlock();
 	return 0;
 }
 
 static u64 start_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
-	rcu_read_lock();
 	pmu->start(event, PERF_EF_UPDATE);
-	rcu_read_unlock();
 	return 0;
 }
 
 static u64 stop_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
-	rcu_read_lock();
 	pmu->stop(event, PERF_EF_UPDATE);
-	rcu_read_unlock();
 	return 0;
 }
 
 static u64 read_pmu(const struct perf_event *event)
 {
 	struct pmu *pmu = event->pmu;
-	rcu_read_lock();
 	pmu->read(event);
-	rcu_read_unlock();
 	return local64_read(&event->count);
 }
-
-
 
 static void __EXPERIMENT_enable_perf_sched(void)
 {

@@ -48,8 +48,9 @@ void set_cpu_affinity(unsigned int core)
 
 void *func(void *data)
 {
-    // long long before = read_energy();
-    while (1)
+// long long before = read_energy();
+    #pragma omp parallel for
+    for (;;)
     {
         // syscall(SYS_write, 1, "hello\n", 8);
         printf("hello, world: %ld\n", pthread_self());
@@ -88,6 +89,13 @@ static void cancel_threads(int nr_threads)
     }
 }
 
+static void print_energy_consumed(long long before, long long after)
+{
+    double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
+    printf("=====================C======================\n");
+    printf("energy consumed: %fJ\n", result);
+    printf("=====================C======================\n");
+}
 int main(int argc, char *argv[])
 {
     int pid = getpid();
@@ -97,9 +105,15 @@ int main(int argc, char *argv[])
     int nr_threads = atoi(argv[2]);
     int time = atoi(argv[3]);
 
-    init_threads(nr_threads);
     unsigned long long before = read_energy(core);
+    init_threads(nr_threads);
 
+    // #pragma omp parallel for
+    // for (;;)
+    // {
+    //     // syscall(SYS_write, 1, "hello\n", 8);
+    //     printf("hello, world: %ld\n", pthread_self());
+    // }
     // wait_threads(nr_threads);
     // sleep(time);
     // cancel_threads(nr_threads);
@@ -108,8 +122,5 @@ int main(int argc, char *argv[])
 
     unsigned long long after = read_energy(core);
 
-    double result = (after - before) /* / pow(10, 6) */ * PERF_CONSTANT;
-    printf("=====================C======================\n");
-    printf("core %d: energy consumed: %fJ\n", core, result);
-    printf("=====================C======================\n");
+    print_energy_consumed(before, after);
 }
