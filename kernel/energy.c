@@ -109,20 +109,22 @@ static unsigned int find_sw_thread_num(unsigned int cpu)
 static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
 	struct task_struct *p = current;
-	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
-	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	// pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
+	lock_process_on_cpu(p->pid, p->thread_info.cpu);
 
 	// find_threads(p);
-	init_preempt_notifiers(dev, p);
-	release_preempt_notifiers(dev, p);
+	// init_preempt_notifiers(dev, p);
+	// release_preempt_notifiers(dev, p);
 
 	energy_t *data = dev_get_drvdata(dev);
 	unsigned int cpu;
 
+	channel = p->thread_info.cpu;
+
 	if (channel >= data->nr_cpus)
 	{
 		cpu = cpumask_first_and(cpu_online_mask, cpumask_of_node(channel - data->nr_cpus));
-		pr_alert("CPU: %d\n", cpu);
+		// pr_alert("CPU: %d\n", cpu);
 		add_delta_pkg(data, channel, cpu, val);
 	}
 	else
@@ -164,43 +166,6 @@ static int read_perf_energy_data(struct device *dev, enum hwmon_sensor_types typ
 	struct perf_event *event = data->perf[channel].event;
 	u64 value, enabled, running;
 	value = perf_event_read_value(event, &enabled, &running);
-
-	// pr_alert("%s(): CPU: %d, cpu: %d, value: %ld, enabled: %ld, running: %ld\n", __FUNCTION__, channel, event->cpu, value, enabled, running);
-	mutex_lock(&data->lock);
-	*val = value;
-	mutex_unlock(&data->lock);
-
-	return 0;
-}
-
-static int read_perf_energy_data2(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
-{
-	rcu_read_lock();
-	struct task_struct *p = current;
-	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
-	// __preempt_notifier_register(p);d
-	pr_alert("pid: %d, comm: %s, thread_info CPU: %d\n", p->pid, p->comm, p->thread_info.cpu);
-
-	find_threads(p);
-	// __preempt_notifier_unregister(p);
-	rcu_read_unlock();
-
-	energy_t *data = dev_get_drvdata(dev);
-	unsigned int cpu;
-
-	cpu = channel;
-	if (!cpu_online(cpu))
-	{
-		return -ENODEV;
-	}
-
-	struct perf_event *event = data->perf[channel].event;
-
-	u64 value, enabled, running;
-
-	rcu_read_lock();
-	value = perf_event_read_value(event, &enabled, &running);
-	rcu_read_unlock();
 
 	// pr_alert("%s(): CPU: %d, cpu: %d, value: %ld, enabled: %ld, running: %ld\n", __FUNCTION__, channel, event->cpu, value, enabled, running);
 	mutex_lock(&data->lock);

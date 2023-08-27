@@ -57,7 +57,7 @@ static void lock_process_on_cpu(pid_t pid, unsigned int cpu)
     cpumask_clear(&mask);
     cpumask_set_cpu(cpu, &mask);
     sched_setaffinity_func(pid, &mask);
-    pr_alert("%s() called for pid: %d on cpu: %d\n", __FUNCTION__, pid, cpu);
+    // pr_alert("%s() called for pid: %d on cpu: %d\n", __FUNCTION__, pid, cpu);
 }
 
 /**
