@@ -109,8 +109,8 @@ static unsigned int find_sw_thread_num(unsigned int cpu)
 static int read_energy_data(struct device *dev, enum hwmon_sensor_types type, u32 attr, int channel, long *val)
 {
 	struct task_struct *p = current;
-	// pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
-	lock_process_on_cpu(p->pid, p->thread_info.cpu);
+	pr_alert("tgid: %d, pid: %d, comm: %s, thread_info CPU: %d\n", p->tgid, p->pid, p->comm, p->thread_info.cpu);
+	// lock_process_on_cpu(p->pid, p->thread_info.cpu);
 
 	// find_threads(p);
 	// init_preempt_notifiers(dev, p);
