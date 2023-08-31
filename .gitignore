@@ -83,3 +83,6 @@ kernel/energy.*
 # IntelliJ specific .xml file
 .idea/*.xml
 *.class
+
+# dataset
+dataset/
